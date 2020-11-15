@@ -24,7 +24,7 @@ func GetStatic() string {
 }
 
 // 判断一个请求的IP是否在白名单内
-func IsInWhiteList(w http.ResponseWriter, r *http.Request) bool {
+func IsInWhiteList(r *http.Request) bool {
 	ip, _ := GetIpAndPort(r)
 	_, exist := IpHistory[ip]
 	return exist

@@ -12,7 +12,7 @@ import (
 
 // 查看并返回请求详情
 func GetRequestDetail(w http.ResponseWriter, r *http.Request) {
-	recordRequest(r, "")
+	RecordRequest(r, "")
 	ip, port := tb.GetIpAndPort(r)
 	content := ""
 	content += `<!DOCTYPE html><html lang="zh-CN"><head></head><body>`
@@ -49,18 +49,20 @@ func GetReqLogs(w http.ResponseWriter, r *http.Request) {
 func AddIpToWhiteList(w http.ResponseWriter, r *http.Request) {
 	ip, _ := tb.GetIpAndPort(r)
 	tb.AddWhiteList(ip)
-	recordRequest(r, "✅")
+	RecordRequest(r, "✅")
 	fmt.Fprint(w, "👌 OK!")
 }
 
 // 处理没有找到正确路由的请求
 func DefaultHandler(w http.ResponseWriter, r *http.Request) {
-	recordRequest(r, "🚫")
-	fmt.Fprint(w, "Hello world!")
+	RecordRequest(r, "🚫")
+	fmt.Fprint(w, "It is the host of BlackCarDriver....🚓")
 }
 
+// =================================================================
+
 // 记录访问日志
-func recordRequest(req *http.Request, preFix string) {
+func RecordRequest(req *http.Request, preFix string) {
 	ip, port := tb.GetIpAndPort(req)
 	visitTimes := tb.GetAndAddIpVisitTimes(ip)
 	log := fmt.Sprintf("%s%d  %d  %s  %s  %s  %s  %s  %s",

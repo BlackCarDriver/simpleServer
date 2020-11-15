@@ -5,13 +5,18 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
+	"time"
 
 	"github.com/astaxie/beego/logs"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 // 从请求中获取IP和端口
 func GetIpAndPort(r *http.Request) (remoteAddr, port string) {
@@ -63,22 +68,32 @@ func ClearFile(path string) error {
 }
 
 // 文件服务，提供弹出下载弹框的响应
-func ServerFile(w http.ResponseWriter, filePath string) error {
+func ServerFile(w http.ResponseWriter, filePath string, fileName string) error {
+	if fileName == "" {
+		return fmt.Errorf("fileName can't be null")
+	}
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
-	_, filename := filepath.Split(filePath)
-	if filename == "" {
-		err = fmt.Errorf("Can't split file path.")
-		return err
-	}
+
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("content-disposition", fmt.Sprintf("attachment; filename=%s", filename))
+	w.Header().Set("content-disposition", fmt.Sprintf("attachment; filename=%s", fileName))
 	_, err = io.Copy(w, file)
 	if err != nil {
 		return err
 	}
 	return nil
+}
+
+// 生成一个随机字符串
+func GetRandomString(l int) string {
+	str := "abcdefghijklmnopqrstuvwxyz"
+	bytes := []byte(str)
+	result := []byte{}
+	for i := 0; i < l; i++ {
+		result = append(result, bytes[rand.Int()%len(bytes)])
+	}
+	return string(result)
 }
