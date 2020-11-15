@@ -12,11 +12,18 @@ import (
 	"github.com/astaxie/beego/logs"
 )
 
-func main() {
-	// logs.SetLogger("file", `{"filename":"./log/server.log"}`)
-	logs.SetLogger("console")
+func initMain() {
+	if config.ServerConfig.IsTest {
+		logs.SetLogger("console")
+	} else {
+		logs.SetLogger("file", `{"filename":"./log/server.log"}`)
+	}
 	logs.EnableFuncCallDepth(true)
 	logs.SetLogFuncCallDepth(3)
+}
+
+func main() {
+	initMain()
 
 	http.HandleFunc("/", mainRouter)
 	err := http.ListenAndServe(":80", nil)

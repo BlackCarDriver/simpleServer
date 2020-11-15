@@ -23,11 +23,16 @@ type serverConfig struct {
 	SourcePathTp  string `xml:"source_path"`  // 文件上传和下载的文件路径模板
 }
 
+type databaseConfig struct {
+	MongoURL string `xml:"mongo_url"` // 链接mongoDB的链接
+}
+
 var MailConfig mailConfig
 var ServerConfig serverConfig
+var DataBaseConfig databaseConfig
 
 func init() {
-	xmlFile, err := os.Open("./config/server.xml")
+	xmlFile, err := os.Open("./config/config.xml")
 	if err != nil {
 		logs.Critical("Error opening config file: %v", err)
 		os.Exit(1)
@@ -38,7 +43,10 @@ func init() {
 	b, _ := ioutil.ReadAll(xmlFile)
 	xml.Unmarshal(b, &MailConfig)
 	xml.Unmarshal(b, &ServerConfig)
+	xml.Unmarshal(b, &DataBaseConfig)
 
 	logs.Info("MailConfig: %+v", MailConfig)
 	logs.Info("ServerConfig: %+v", ServerConfig)
+	logs.Info("DataBaseConfig: %+v", DataBaseConfig)
+	logs.Info("config init success...")
 }

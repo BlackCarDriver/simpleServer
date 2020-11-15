@@ -97,3 +97,14 @@ func GetRandomString(l int) string {
 	}
 	return string(result)
 }
+
+// 检查文件是否存在
+func CheckFileExist(path string) bool {
+	if _, err := os.Stat(path); err != nil {
+		if !os.IsNotExist(err) {
+			logs.Error("Error unnormal: %v", err)
+		}
+		return false
+	}
+	return true
+}

@@ -11,16 +11,17 @@ import (
 	"strings"
 
 	"../config"
+	"../model"
 	tb "../toolbox"
 	"github.com/astaxie/beego/logs"
 )
 
 // 接受一个post请求，将主体中的文件保存下来，返回一个下载链接,每次仅支持上传单个文件
-// Example： curl -F 'file=@default.conf' http://localhost:80/upload
+// Example：curl -F 'file=@default.conf' http://localhost:80/upload
 func UploadFile(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		logs.Warn("UploadFile() receive bad request: %v", r)
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		fmt.Fprint(w, "demo: curl -F 'file=@default.conf' http://localhost:80/upload")
 		return
 	}
 
@@ -46,8 +47,8 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//获取表单文件, 此时 v 为 []*FileHeader, FileHeader包含字段：FileName 和  Size ...
 	for _, files := range r.MultipartForm.File {
+		// 解析表单
 		if size := len(files); size != 1 {
 			err = fmt.Errorf("Reject because size of fileHeader is %d", len(files))
 			return
@@ -62,9 +63,9 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 
-		randName := tb.GetRandomString(8)
-		//先创建一个文件，然后使用io.Copy来保存表单中的文件
+		// 保存文件到本地，名字名字为随机，长度为8
 		var cur *os.File
+		randName := tb.GetRandomString(8)
 		filePath := fmt.Sprintf(config.ServerConfig.SourcePathTp, randName)
 		cur, err = os.Create(filePath)
 		if err != nil {
@@ -77,6 +78,11 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return
 		}
+		// 记录上传记录到mongo
+		err = model.InsertUploadRecord(header.Filename, randName, size)
+		if err != nil {
+			logs.Error("save upload file record fail: err=%v", err)
+		}
 		downloadUrl := fmt.Sprintf(config.ServerConfig.DownloadUrlTp, randName)
 		fmt.Fprintf(w, "\nSave file success: size=%d name=%s \n download_url=%s", size, header.Filename, downloadUrl)
 	}
@@ -84,9 +90,9 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 }
 
 // 返回文件供下载
-// Example: curl http://localhost:80/download/abcdefgddd
+// Example: wget --no-check-certificate http://localhost:80/download/abcdefgddd
 func DownloadFile(w http.ResponseWriter, r *http.Request) {
-	logs.Info(r)
+	var err error
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		logs.Warn("DownloadFile reeceive a bad request: %v", r)
@@ -98,15 +104,26 @@ func DownloadFile(w http.ResponseWriter, r *http.Request) {
 		logs.Warn("unexpect url: %s", r.URL)
 		return
 	}
-	fileName := url[9:]
-	logs.Info("sourceName=%s", fileName)
+	code := url[9:] // 取件码
+	filePath := fmt.Sprintf(config.ServerConfig.SourcePathTp, code)
+	if !tb.CheckFileExist(filePath) {
+		logs.Info("file not exist: path=%s", filePath)
+		fmt.Fprintf(w, "file not exist")
+		return
+	}
 
-	filePath := fmt.Sprintf(config.ServerConfig.SourcePathTp, fileName)
-	err := tb.ServerFile(w, filePath, "fileName")
+	var record model.FileUpload
+	record, err = model.GetUploadRecord(code)
+	if err != nil {
+		logs.Info("record not found: path=%s  err=%v", filePath, err)
+		fmt.Fprintf(w, "file record not found: %v", err)
+	}
+
+	err = tb.ServerFile(w, filePath, record.FileName)
 	if err != nil {
 		logs.Error("ServerFile fail: %v", err)
 		fmt.Fprintf(w, "Error happen: %v", err)
 		return
 	}
-	logs.Info("Server file success")
+	logs.Info("Server file success: %+v", record)
 }
