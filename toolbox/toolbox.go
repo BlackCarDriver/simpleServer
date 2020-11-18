@@ -9,6 +9,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/astaxie/beego/logs"
@@ -68,7 +70,7 @@ func ClearFile(path string) error {
 }
 
 // 文件服务，提供弹出下载弹框的响应
-func ServerFile(w http.ResponseWriter, filePath string, fileName string) error {
+func ServerFile(w http.ResponseWriter, filePath string, fileName string, size int64) error {
 	if fileName == "" {
 		return fmt.Errorf("fileName can't be null")
 	}
@@ -79,6 +81,7 @@ func ServerFile(w http.ResponseWriter, filePath string, fileName string) error {
 	defer file.Close()
 
 	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", fmt.Sprint(size))
 	w.Header().Set("content-disposition", fmt.Sprintf("attachment; filename=%s", fileName))
 	_, err = io.Copy(w, file)
 	if err != nil {
@@ -107,4 +110,93 @@ func CheckFileExist(path string) bool {
 		return false
 	}
 	return true
+}
+
+// 将Get请求或Post请求中传输的参数赋值到结构体里面的字段
+// ptrToTargetb必须为一个指向结构体的指针, 且通过'json标签'来指定从表单中获取数据的关键字
+// 注意事项：只有全部字段都在表单中找到并且转换成功才返回nil; 即使返回err不为空,目标结构体可能被改变;
+// 前端使用post请求时加上'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+func MustQueryFromRequest(req *http.Request, ptrToTarget interface{}) (err error) {
+	defer func() {
+		msg, ok := recover().(interface{})
+		if ok {
+			var errptr = &err
+			*errptr = fmt.Errorf("catch panic: err=%v", msg)
+		}
+		logs.Info("convert result: error=%v  target=%v", err, ptrToTarget)
+	}()
+
+	if req == nil {
+		return fmt.Errorf("params request is null")
+	}
+	req.ParseForm()
+	if len(req.Form) == 0 {
+		return fmt.Errorf("request Form is empty")
+	}
+	// 确认是指针
+	rType := reflect.TypeOf(ptrToTarget)
+	rValue := reflect.ValueOf(ptrToTarget)
+	if rType.Kind() != reflect.Ptr {
+		return fmt.Errorf("target not a pointer: type=%v", rType.Kind())
+	}
+	// 确认指向结构体
+	rType = rType.Elem()
+	rValue = rValue.Elem()
+	if rType.Kind() != reflect.Struct {
+		return fmt.Errorf("target is not a pointer to struct: kind=%v", rType.Kind())
+	}
+	// 确认能被修改
+	if !rValue.CanSet() {
+		return fmt.Errorf("target can't be changed")
+	}
+
+	// 遍历结构体中的字段并从表单中获取相应值
+	for i := 0; i < rValue.NumField(); i++ {
+		tmpVal := rValue.Field(i)
+		vname := rType.Field(i).Name
+
+		if !tmpVal.CanSet() {
+			return fmt.Errorf("field can't be set, index=%d name=%s", i, vname)
+		}
+
+		jsTag, found := rType.Field(i).Tag.Lookup("json")
+		if !found {
+			return fmt.Errorf("json tag not found, index=%d name=%v tag=%v", i, vname, rType.Field(i).Tag)
+		}
+
+		// 从请求表单中获取相应值
+		rawStr := req.Form.Get(jsTag)
+		if rawStr == "" && tmpVal.Kind() != reflect.String {
+			return fmt.Errorf("field not found in query form: index=%d name=%s jsTag=%s form=%v", i, vname, jsTag, req.Form)
+		}
+
+		switch tmpVal.Kind() {
+		case reflect.String:
+			tmpVal.SetString(rawStr)
+		case reflect.Int, reflect.Int32, reflect.Int64:
+			tmpInt, err := strconv.ParseInt(rawStr, 10, 64)
+			if err != nil {
+				return fmt.Errorf("parse Int fail: index=%d name=%s rawStr=%s err=%v", i, vname, rawStr, err)
+			}
+			tmpVal.SetInt(tmpInt)
+
+		case reflect.Float32, reflect.Float64:
+			tmpFloat, err := strconv.ParseFloat(rawStr, 64)
+			if err != nil {
+				return fmt.Errorf("parse Float fail: index=%d name=%s rawStr=%s err=%v", i, vname, rawStr, err)
+			}
+			tmpVal.SetFloat(tmpFloat)
+
+		case reflect.Bool:
+			tmpBool, err := strconv.ParseBool(rawStr)
+			if err != nil {
+				return fmt.Errorf("Parse Bool fail: index=%d name=%s rawStr=%s err=%v", i, vname, rawStr, err)
+			}
+			tmpVal.SetBool(tmpBool)
+
+		default:
+			return fmt.Errorf("unsupport kind of field, index=%d name=%v kind=%v", i, vname, tmpVal.Kind())
+		}
+	}
+	return nil
 }

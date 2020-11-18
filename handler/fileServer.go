@@ -84,7 +84,10 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 			logs.Error("save upload file record fail: err=%v", err)
 		}
 		downloadUrl := fmt.Sprintf(config.ServerConfig.DownloadUrlTp, randName)
-		fmt.Fprintf(w, "\nSave file success: size=%d name=%s \n download_url=%s", size, header.Filename, downloadUrl)
+		fmt.Fprintf(w, `\nSave file success: size=%d name=%s \n
+		browser_download_url:  %s \n
+		command_download_url:  wget --no-check-certificate --content-disposition %s \n
+		`, size, header.Filename, downloadUrl, downloadUrl)
 	}
 	return
 }
@@ -119,7 +122,7 @@ func DownloadFile(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "file record not found: %v", err)
 	}
 
-	err = tb.ServerFile(w, filePath, record.FileName)
+	err = tb.ServerFile(w, filePath, record.FileName, record.Size)
 	if err != nil {
 		logs.Error("ServerFile fail: %v", err)
 		fmt.Fprintf(w, "Error happen: %v", err)

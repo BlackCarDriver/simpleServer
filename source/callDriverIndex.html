@@ -1,0 +1,160 @@
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>CallDriver</title>
+<script>
+    // 切换标签页
+    function changeTab(evt, id) {
+      let i, tabcontent, tablinks;
+      tabcontent = document.getElementsByClassName("tabcontent");
+      for (i = 0; i < tabcontent.length; i++) {
+        tabcontent[i].style.display = "none";
+      }
+      tablinks = document.getElementsByClassName("tablinks");
+      for (i = 0; i < tablinks.length; i++) {
+        tablinks[i].className = tablinks[i].className.replace(" active", "");
+      }
+      document.getElementById(id).style.display = "block";
+      evt.currentTarget.className += " active";
+    }
+    // 发送消息
+    function sendMessage(){
+        let nick = document.getElementById("nickText").value
+        let msg = document.getElementById("sendText").value
+        if (nick.length < 3) {
+            alert("nick is null or too short...")
+            return
+        }
+        if (msg.length < 2) {
+            alert("message is null or too short...")
+            return
+        }
+        console.debug(nick, msg)
+        let url = "http://localhost:80/callDriver/sendMessage?nick=" + encodeURIComponent(nick) +"&msg=" + encodeURIComponent(msg);
+        fetch(url).then(resp=>{
+          console.debug("success..., resp=", resp)
+          clearInput()
+        }).catch(err=>{
+          alert("sorry, send message fail, please check the log...")
+          console.error("send message fail:", err)
+        })
+    }
+    // 自动刷新查询消息
+    function startGetResponse() {
+      let nick = document.getElementById("nickText").value
+      if (nick.length > 3){
+        let url="http://localhost:80/callDriver/getHistory?nick="+encodeURIComponent(nick)
+        fetch(url).then(resp=>{
+            myalert(10)
+            console.debug("success..., resp=", resp)
+            return
+        }).catch(err=>{
+            console.error("check response fail: " + err)
+            return
+        })
+        return
+      } 
+      setTimeout(() => {
+        startGetResponse()
+      }, 10000)
+    }
+    // 背景闪烁
+    function myalert(n) {
+        if (n <= 0) return
+        let bd = document.getElementsByTagName("body");
+        if (bd != null) {
+            bd[0].style.backgroundColor = (n%2==1?"#404040":"#282525")
+            document.title = (n%2==1?"BlackCarDriver":"New Message")
+        }
+        setTimeout(() => {
+            myalert(n-1)
+        }, 200);
+    }
+    //清空输入框
+    function clearInput() {
+      let ta = document.getElementsByClassName("ntc")
+      console.debug(ta)
+      if (ta != null) {
+        for (i=0; i<ta.length; i++) {
+          ta[i].value = ""
+        }
+      }
+    }
+
+    // 延迟一定时间后初始化
+    setTimeout(() => {
+      document.getElementById("sendDiv").style.display = "block"
+      document.getElementById("sendTab").className += " active"
+      startGetResponse()
+    }, 300);
+    </script>
+    <!-- ================================================================================================= -->
+    <!-- ================================================================================================= -->
+</head>
+<body>
+    <div style="display: inline-block;">
+    <h1 style="margin: 0;text-align: center;">Call Driver</h1>
+    <input class="nick" id="nickText" maxlength="50" placeholder="Please input your nick here...">
+    <div class="tab">
+      <button class="tablinks" id="sendTab" onclick="changeTab(event, 'sendDiv')">Send Message</button>
+      <button class="tablinks" id="newMsgTab" onclick="changeTab(event, 'getDiv')">Check Response</button>
+      <button class="tablinks" onclick="changeTab(event, 'aboutDiv')">About It Site</button>
+    </div>
+    
+    <div id="sendDiv" class="tabcontent">
+            <textarea id="sendText" maxlength="200" class="ntc" placeholder="say something..."></textarea>
+            <button onclick="sendMessage()" style="width: 100%;height: 2em;font-size: 16px;">Send</button>
+    </div>
+    
+    <div id="getDiv" class="tabcontent">
+        <textarea id="receiveText"  placeholder="no message yet..." disabled="true" style="min-height: 10em;"></textarea>
+    </div>
+    
+    <div id="aboutDiv" class="tabcontent">
+        <div style="width: 100%; min-height: 5em; background-color: #fff;">
+            <p>It simple site used to send message to me</p>
+        </div>
+    </div>
+    </div>
+    
+</body>
+
+<!-- ====================================================================================== -->
+<!-- ====================================================================================== -->
+<style>
+    body {font-family: Arial;background: #222;color: #34a3e6;}
+    textarea{width: 100%;display: block;}
+    p{margin: 0;}
+    .box{width: 30em;}
+    .nick{ width: 100%; height: 2em; margin-bottom: 1em;}
+
+    .tab {
+      overflow: hidden;
+      border: 1px solid #ccc;
+      background-color: #f1f1f1;
+    }
+    
+    .tab button {
+        background-color: inherit;
+        outline: none;
+        cursor: pointer;
+        font-size: 16px;
+        border: none;
+    }
+    
+    .tab button:hover {
+      background-color: #ddd;
+    }
+    
+    .tab button.active {
+      background-color: #ccc;
+    }
+    
+    /* Style the tab content */
+    .tabcontent {
+      display: none;
+    }
+    </style>
+
+</html>

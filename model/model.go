@@ -10,8 +10,9 @@ import (
 
 // mongoDB 相关常量
 const (
-	mongodbName       = "simpleServer"
-	CollectUploadFile = "upload_file"
+	mongodbName          = "simpleServer"
+	CollectUploadFile    = "upload_file"
+	CollectCallDriverMsg = "call_driver_msg" //callDriver应用的聊条记录
 )
 
 var (
@@ -45,4 +46,14 @@ type FileUpload struct {
 	Code      string `bson:"code"`
 	TimeStamp int64  `bson:"timeStamp"`
 	Size      int64  `bson:"size"`
+}
+
+// callDriver 应用聊天记录结构
+type CallDriverChat = struct {
+	ID        string `bson:"_id"`
+	From      string `bson:"from"`
+	To        string `bson:"to"`
+	Message   string `bson:"message"`
+	TimeStamp int64  `bson:"timeStamp"`
+	Status    int    `bson:"status"`
 }

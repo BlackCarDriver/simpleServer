@@ -11,6 +11,7 @@ import (
 var (
 	RequestCounter = 0                     // 访问次数计数器
 	IpWhiteList    = make(map[string]bool) // 访问白名单
+	IpBlackList    = make(map[string]bool) // 访问黑名单
 	IpHistory      = make(map[string]int)  // ip访问记录和次数
 )
 
@@ -30,9 +31,21 @@ func IsInWhiteList(r *http.Request) bool {
 	return exist
 }
 
+// 判断一个请求的IP地址是否在黑名单内
+func IsInBlackList(r *http.Request) bool {
+	ip, _ := GetIpAndPort(r)
+	_, exist := IpBlackList[ip]
+	return exist
+}
+
 // 将IP加入到白名单
 func AddWhiteList(ip string) {
 	IpWhiteList[ip] = true
+}
+
+// 将IP加入到黑名单
+func AddBlackList(ip string) {
+	IpBlackList[ip] = true
 }
 
 var readMux *sync.Mutex = new(sync.Mutex)
