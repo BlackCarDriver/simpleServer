@@ -55,5 +55,6 @@ type CallDriverChat = struct {
 	To        string `bson:"to"`
 	Message   string `bson:"message"`
 	TimeStamp int64  `bson:"timeStamp"`
+	IP        string `bson:"ip"`
 	Status    int    `bson:"status"`
 }

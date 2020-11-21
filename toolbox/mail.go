@@ -13,7 +13,7 @@ func sendMail(mailTo []string, subject string, body string) error {
 		config.MailConfig.MailHost,
 		config.MailConfig.MailPort,
 		config.MailConfig.MailUser,
-		config.MailConfig.MailHost,
+		config.MailConfig.MailPass,
 	)
 	m := gomail.NewMessage()
 	m.SetHeader("From", m.FormatAddress(config.MailConfig.MailUser, "CallDriver")) //添加别名
@@ -21,6 +21,9 @@ func sendMail(mailTo []string, subject string, body string) error {
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
 	err := d.DialAndSend(m)
+	if err != nil {
+		logs.Debug("send mail fial: %+v", d)
+	}
 	return err
 }
 
