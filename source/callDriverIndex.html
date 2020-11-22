@@ -4,6 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>CallDriver</title>
 <script>
+    var cahtBuff = ""
     // 切换标签页
     function changeTab(evt, id) {
       let i, tabcontent, tablinks;
@@ -53,7 +54,11 @@
         myrequest(url).then(res=>{
             if (res==undefined || res=="") return
             if (res.status == 0 || res.status==1){
-                document.getElementById("receiveText").innerHTML = res.msg
+                if (this.chatBuff!=res.msg){
+                  console.debug("replace success")
+                  this.chatBuff = res.msg
+                  document.getElementById("receiveText").innerHTML = this.chatBuff
+                }
                 if (res.status == 1)  alert("You receive a new Message!!!")
             }else if(res.status==-1){
                 alert(res.msg)
@@ -126,7 +131,7 @@
     
     <div id="aboutDiv" class="tabcontent">
         <div style="width: 100%; min-height: 5em; background-color: #fff;">
-            <p>It simple site used to send message to me</p>
+            <p>It simple site used to send message to me!!!</p>
         </div>
     </div>
     <div>
@@ -143,6 +148,7 @@
     textarea{width: 100%;display: block;min-height: 5em;}
     #receiveText{width: 100%; display: block;background-color: #a8b3a6; min-height: 10em; padding: 1em 0;}
     p{margin: 0;}
+    img{max-width: 10em;}
     .nick{ width: 100%; height: 2em; margin-bottom: 1em;}
     .msgNick1{color: #1d0aa4;}
     .msgNick2{color: #cc11af;}

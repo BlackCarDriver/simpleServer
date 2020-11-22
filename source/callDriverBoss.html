@@ -4,6 +4,7 @@
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>CallDriver</title>
 <script>
+   var chatBuff = ""
     // 发送消息
     function sendMessage(){
         let nick = document.getElementById("nickText").value
@@ -32,7 +33,10 @@
         myrequest(url).then(res=>{
             if (res==undefined || res=="") return
             if (res.status == 0 || res.status==1){
-                document.getElementById("receiveText").innerHTML = res.msg
+                if (this.chatBuff!=res.msg){
+                  this.chatBuff = res.msg
+                  document.getElementById("receiveText").innerHTML = this.chatBuff
+                }
             }else{
               alert("some worng happen, please check the log...")
               console.Error("get response fail:", res)
@@ -111,6 +115,7 @@
     body {font-family: Arial;background: #222;color: #34a3e6;}
     textarea{width: 100%;display: block;min-height: 5em;}
     #receiveText{width: 100%;display: block;background-color: #a8b3a6; width: 30em;padding: 1em 0;}
+    img{max-width: 10em;}
     p{margin: 0;}
     .box{width: 30em;}
     .nick{ width: 100%; height: 2em; margin-top: 1em;}

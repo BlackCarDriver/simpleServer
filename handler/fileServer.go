@@ -148,11 +148,18 @@ func StatisHandler(w http.ResponseWriter, r *http.Request) {
 	fileName := strings.TrimPrefix(url, "static/")
 	filePath := fmt.Sprintf(config.ServerConfig.StaticPathTP, fileName)
 	logs.Info("get static path: %s", filePath)
-	if !tb.CheckFileExist(filePath) {
+	canFind := tb.CheckFileExist(filePath)
+
+	if !canFind { // 目标找不到尝试返回同目录下的default.jpg
 		logs.Info("files not exist: %s", filePath)
-		w.WriteHeader(http.StatusNotFound)
-		return
+		filePath = fmt.Sprintf(config.ServerConfig.StaticPathTP, "default.jpg")
+		if !tb.CheckFileExist(filePath) {
+			w.WriteHeader(http.StatusInternalServerError)
+			logs.Error("default.jpg not found: err=%v", err)
+			return
+		}
 	}
+
 	file, err := os.Open(filePath)
 	if err != nil {
 		logs.Error("open file fail: %v", err)

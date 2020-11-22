@@ -161,7 +161,7 @@ func callDriverGetChatHistroy(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 查询记录
-		history, err = model.FindCallDriverMessage(req.Nick, 6)
+		history, err = model.FindCallDriverMessage(req.Nick, 10)
 		if err != nil || history == nil {
 			logs.Error("get history fail: err=%v len=%v", err, len(history))
 			break
