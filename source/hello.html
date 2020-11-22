@@ -3,11 +3,9 @@
 <title>BlackCarDriver</title>
 <script>
         run = (s) => {
-            let v = document.getElementById("body")
-            if (s > 25) return
-            if (v!=null) console.debug(v.style, s)
+            let v = document.getElementById("car")
+            if (s > 20) return
             if(v!=null) v.style.fontSize = s+"em"
-            // if (v!=null) v.setAttribute('font-size', s+"em")
             setTimeout(() => {
                 s+=0.1
                 run(s)
@@ -16,7 +14,8 @@
         run(1)
 </script> 
 </head>
-<body id="body" style="background-color: black;color: white;">
-    <p>🚔</p>
+<body style="background-color: black;color: white;">
+    <h1>It is the host of BlackCarDriver.....</h1>
+    <p id="car" style="margin: 0;">🚔</p>
 </body>
 </html>

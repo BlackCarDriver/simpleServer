@@ -77,8 +77,16 @@ func regexHandler(w http.ResponseWriter, r *http.Request, url string) {
 		wrapper(handler.DownloadFile, w, r, true, true)
 		return
 	}
-	if strings.HasPrefix(url, "callDriver") {
+	if strings.HasPrefix(url, "static") { // 静态文件服务
+		handler.StatisHandler(w, r)
+		return
+	}
+	if strings.HasPrefix(url, "callDriver") { // callDriver应用
 		handler.CallDriverHandler(w, r)
+		return
+	}
+	if strings.HasPrefix(url, "manage") { // 管理页面
+		handler.ManageHandler(w, r)
 		return
 	}
 

@@ -21,6 +21,7 @@ type serverConfig struct {
 	IsTest        bool   `xml:"is_test"`
 	DownloadUrlTp string `xml:"download_url"` // 请求下载文件的url模板
 	SourcePathTp  string `xml:"source_path"`  // 文件上传和下载的文件路径模板
+	StaticPathTP  string `xml:"statis_path"`  //存储静态文件的位置
 }
 
 type databaseConfig struct {

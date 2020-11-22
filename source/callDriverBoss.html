@@ -8,7 +8,7 @@
     function sendMessage(){
         let nick = document.getElementById("nickText").value
         let msg = document.getElementById("sendText").value
-        if (nick.length < 3 || msg.length < 1) {
+        if (nick.length < 2 || msg.length < 1) {
             alert("nick or message too short...")
             return
         }
@@ -41,7 +41,7 @@
       if (loop){
         setTimeout(() => {
         startGetResponse(true)
-      }, 20000)
+      }, 10000)
       }
     }
     //控制是否开启邮件通知
@@ -97,12 +97,12 @@
     <input class="nick" id="nickText" maxlength="50" placeholder="Input nick here...">
     <textarea id="sendText" maxlength="200" class="ntc" placeholder="reply message here..."></textarea>
     <button onclick="sendMessage()" style="width: 100%;height: 2em;font-size: 16px;">Send</button>
-
-    <div style="height: 3em"></div>
+    <div style="height: 3em">
+        😀😁😎😍😘😧😨😬🙈🙉🙊😸😹😻🐷🔊💤💢❔❕🚓🔍
+    </div>
     <button onclick="sendEmail(true)">Email Open</button>
     <button onclick="sendEmail(false)">Email Close</button>
     </div>
-    
 </body>
 
 <!-- ====================================================================================== -->

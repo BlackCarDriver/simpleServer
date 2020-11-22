@@ -39,7 +39,7 @@ func CallDriverHandler(w http.ResponseWriter, r *http.Request) {
 	url := strings.Trim(fmt.Sprintf("%s", r.URL.Path), "/")
 	switch url {
 	case "callDriver":
-		http.ServeFile(w, r, "./source/callDriverIndex.html")
+		CallDriverHtml(w, r)
 	case "callDriver/sendMessage":
 		callDriverReceiveMsg(w, r)
 	case "callDriver/getHistory":
@@ -55,6 +55,11 @@ func CallDriverHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		DefaultHandler(w, r)
 	}
+}
+
+func CallDriverHtml(w http.ResponseWriter, r *http.Request) {
+	RecordRequest(r, "🚓")
+	http.ServeFile(w, r, "./source/callDriverIndex.html")
 }
 
 // 接受来自callDriver应用的消息，保存到数据库并发送通知邮件
@@ -78,10 +83,12 @@ func callDriverReceiveMsg(w http.ResponseWriter, r *http.Request) {
 		if len(req.Nick) < 2 || len(req.Msg) < 1 {
 			resp.Status = -1
 			resp.Msg = "nick or message is too short"
+			break
 		}
 		if req.Nick == myName {
 			resp.Status = -1
 			resp.Msg = "Sorry, you can't use it nick..."
+			break
 		}
 
 		// 保存聊天记录
@@ -91,7 +98,7 @@ func callDriverReceiveMsg(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		// 发送邮箱通知
-		if config.ServerConfig.IsTest && !sendEmail {
+		if config.ServerConfig.IsTest || !sendEmail {
 			logs.Info("Skip send email: isTest=%s  sendEmail=%v",
 				config.ServerConfig.IsTest, sendEmail)
 			break
@@ -140,6 +147,19 @@ func callDriverGetChatHistroy(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Nick = strings.TrimSpace(req.Nick)
 		logs.Info("get history request: %v", req)
+
+		// 参数检查
+		if len(req.Nick) < 2 {
+			resp.Status = -1
+			resp.Msg = "nick or message is too short"
+			break
+		}
+		if req.Nick == myName {
+			resp.Status = -1
+			resp.Msg = "Sorry, you can't use it nick..."
+			break
+		}
+
 		// 查询记录
 		history, err = model.FindCallDriverMessage(req.Nick, 6)
 		if err != nil || history == nil {

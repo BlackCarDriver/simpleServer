@@ -130,3 +130,41 @@ func DownloadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	logs.Info("Server file success: %+v", record)
 }
+
+// 返回图片等资源
+func StatisHandler(w http.ResponseWriter, r *http.Request) {
+	var err error
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		logs.Warn("DownloadFile reeceive a bad request: %v", r)
+		return
+	}
+	url := strings.Trim(fmt.Sprint(r.URL), "/")
+	if !regexp.MustCompile("^static/\\w{2,40}\\.\\w{2,5}$").MatchString(url) {
+		w.WriteHeader(http.StatusBadRequest)
+		logs.Warn("unexpect url: %s", r.URL)
+		return
+	}
+	fileName := strings.TrimPrefix(url, "static/")
+	filePath := fmt.Sprintf(config.ServerConfig.StaticPathTP, fileName)
+	logs.Info("get static path: %s", filePath)
+	if !tb.CheckFileExist(filePath) {
+		logs.Info("files not exist: %s", filePath)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	file, err := os.Open(filePath)
+	if err != nil {
+		logs.Error("open file fail: %v", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	size, err := io.Copy(w, file)
+	if err != nil {
+		logs.Error("return statis fail: err=%e", err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	logs.Info("server statis file: size=%d  name=%s", size, fileName)
+	return
+}

@@ -42,7 +42,12 @@ func GetRequestDetail(w http.ResponseWriter, r *http.Request) {
 
 // 获取访问日志
 func GetReqLogs(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "%s", tb.GetStatic())
+	visitStr := tb.GetStatic()
+	logStr, err := tb.ParseFile("./log/server.log")
+	if err != nil {
+		logs.Error("read logs file fail: %v", err)
+	}
+	fmt.Fprintf(w, "%s\n%s", visitStr, logStr)
 }
 
 // 将ip地址加入到白名单
@@ -56,7 +61,8 @@ func AddIpToWhiteList(w http.ResponseWriter, r *http.Request) {
 // 处理没有找到正确路由的请求
 func DefaultHandler(w http.ResponseWriter, r *http.Request) {
 	RecordRequest(r, "🚫")
-	fmt.Fprint(w, "It is the host of BlackCarDriver....🚓")
+	// fmt.Fprint(w, "It is the host of BlackCarDriver....🚓")
+	http.ServeFile(w, r, "./source/hello.html")
 }
 
 // =================================================================

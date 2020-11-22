@@ -55,17 +55,18 @@
             if (res.status == 0 || res.status==1){
                 document.getElementById("receiveText").innerHTML = res.msg
                 if (res.status == 1)  alert("You receive a new Message!!!")
-                
+            }else if(res.status==-1){
+                alert(res.msg)
             }else{
               alert("some worng happen, please check the log...")
-              console.Error("get response fail:", res)
+              console.error("get response fail:", res)
             }
         })
       }
       if (loop){
         setTimeout(() => {
         startGetResponse(true)
-      }, 20000)
+      }, 10000)
       }
     }
     //清空输入框
@@ -128,8 +129,11 @@
             <p>It simple site used to send message to me</p>
         </div>
     </div>
+    <div>
+        <p>You can copy following emoji to chatBox:....👇</p>
+        😀😁😎😍😘😧😨😬🙈🙉🙊😸😹😻🐷🔊💤💢❔❕🚓🔍
     </div>
-    
+    </div>
 </body>
 
 <!-- ====================================================================================== -->
@@ -137,7 +141,7 @@
 <style>
     body {font-family: Arial;background: #222;color: #34a3e6;}
     textarea{width: 100%;display: block;min-height: 5em;}
-    #receiveText{width: 100%; display: block;background-color: #a8b3a6; min-height: 10em; width: 20em;padding: 1em 0;}
+    #receiveText{width: 100%; display: block;background-color: #a8b3a6; min-height: 10em; padding: 1em 0;}
     p{margin: 0;}
     .nick{ width: 100%; height: 2em; margin-bottom: 1em;}
     .msgNick1{color: #1d0aa4;}
