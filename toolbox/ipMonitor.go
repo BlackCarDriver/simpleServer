@@ -27,24 +27,27 @@ func GetStatic() string {
 // 判断一个请求的IP是否在白名单内
 func IsInWhiteList(r *http.Request) bool {
 	ip, _ := GetIpAndPort(r)
-	_, exist := IpHistory[ip]
-	return exist
+	if IpBlackList[ip] {
+		return false
+	}
+	return IpWhiteList[ip]
 }
 
 // 判断一个请求的IP地址是否在黑名单内
 func IsInBlackList(r *http.Request) bool {
 	ip, _ := GetIpAndPort(r)
-	_, exist := IpBlackList[ip]
-	return exist
+	return IpBlackList[ip]
 }
 
 // 将IP加入到白名单
 func AddWhiteList(ip string) {
+	IpBlackList[ip] = false
 	IpWhiteList[ip] = true
 }
 
 // 将IP加入到黑名单
 func AddBlackList(ip string) {
+	IpWhiteList[ip] = false
 	IpBlackList[ip] = true
 }
 
@@ -69,4 +72,21 @@ func ClearIpHistoryN(n int) int {
 		}
 	}
 	return count
+}
+
+// 查询黑白名单列表
+func GetBlackWhiteList() string {
+	res := "=========== White List ============\n"
+	for ip, exist := range IpWhiteList {
+		if exist {
+			res += ip + "\n"
+		}
+	}
+	res += "=========== Black List ============\n"
+	for ip, exist := range IpBlackList {
+		if exist {
+			res += ip + "\n"
+		}
+	}
+	return res
 }

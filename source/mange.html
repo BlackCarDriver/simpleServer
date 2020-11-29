@@ -42,6 +42,7 @@
 
         <b>添加IP黑名单</b>
         <form name="addBlackList" action="/manage/addBlackList" method="post">
+            <input type="checkbox" name="black" style="display: inline-block"> <span>Black?</span>
             <input type="text" name="ip">
             <input type="submit">
         </form>
@@ -54,6 +55,7 @@
         <a class="mylink" href="/callDriver" target="null">callDriver Guest</a>
         <a class="mylink" href="/callDriver/boss" target="null">callDriver Boss</a>
         <a class="mylink" href="/manage/clearip" target="null">clear ip log</a>
+        <a class="mylink" href="/manage/checklist" target="null">check blackWhiteList</a>
     </div>
     </div>
 </body>

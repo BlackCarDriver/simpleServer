@@ -32,6 +32,8 @@ func ManageHandler(w http.ResponseWriter, r *http.Request) {
 		AddIPBlackList(w, r)
 	case "manage/clearip":
 		ClearIpHistory(w, r)
+	case "manage/checklist":
+		GetBlackWhiteList(w, r)
 	default:
 		DefaultHandler(w, r)
 	}
@@ -90,11 +92,12 @@ func ClearIpHistory(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "clear numbers=%d", res)
 }
 
-// 添加到IP黑名单
+// 添加到IP黑名单或白名单
 func AddIPBlackList(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	type FormStruct struct {
-		IP string `json:"ip"`
+		IP      string `json:"ip"`
+		IsBlack string `json:"black"`
 	}
 	var reqForm FormStruct
 	err := tb.MustQueryFromRequest(r, &reqForm)
@@ -107,8 +110,17 @@ func AddIPBlackList(w http.ResponseWriter, r *http.Request) {
 		logs.Warning(err)
 		goto end
 	}
-	tb.AddBlackList(reqForm.IP)
-	logs.Info("add IP to blackList success: IP=%s", reqForm.IP)
+	if reqForm.IsBlack == "on" {
+		tb.AddBlackList(reqForm.IP)
+	} else {
+		tb.AddWhiteList(reqForm.IP)
+	}
+	logs.Info("add IP to blackList success: IP=%s  isBlack=%v", reqForm.IP, reqForm.IsBlack)
 end:
-	fmt.Fprintf(w, "result: err=%v", err)
+	fmt.Fprintf(w, "result: err=%v  reqForm=%+v", err, reqForm)
+}
+
+// 查看黑白名单情况
+func GetBlackWhiteList(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, "%s", tb.GetBlackWhiteList())
 }

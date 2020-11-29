@@ -75,6 +75,10 @@ func wrapper(defHandler http.HandlerFunc, w http.ResponseWriter, r *http.Request
 
 // 处理模糊匹配的路由
 func regexHandler(w http.ResponseWriter, r *http.Request, url string) {
+	if !config.ServerConfig.IsTest && !tb.IsInWhiteList(r) { // 正式环境下校检特定请求的ip
+		handler.DefaultHandler(w, r)
+		return
+	}
 	if regexp.MustCompile("^download/[a-z]{5,20}$").MatchString(url) { // 下载文件
 		wrapper(handler.DownloadFile, w, r, true, true)
 		return
@@ -91,6 +95,5 @@ func regexHandler(w http.ResponseWriter, r *http.Request, url string) {
 		handler.ManageHandler(w, r)
 		return
 	}
-
 	handler.DefaultHandler(w, r)
 }
