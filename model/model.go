@@ -10,7 +10,6 @@ import (
 
 // mongoDB 相关常量
 const (
-	mongodbName          = "simpleServer"
 	CollectUploadFile    = "upload_file"
 	CollectCallDriverMsg = "call_driver_msg" //callDriver应用的聊条记录
 )
@@ -33,9 +32,9 @@ func init() {
 		logs.Error("Dial mongoDB fial: url=%s  err=%v", config.DataBaseConfig.MongoURL, err)
 		panic(err)
 	}
-	database = session.DB(mongodbName)
+	database = session.DB(config.DataBaseConfig.MongodbName)
 	if database == nil {
-		logs.Error("Connect to database fail: dbName=%s", mongodbName)
+		logs.Error("Connect to database fail: dbName=%s", config.DataBaseConfig.MongodbName)
 	}
 	logs.Info("mongoDB init success...")
 }

@@ -3,6 +3,7 @@ package handler
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -27,6 +28,10 @@ func ManageHandler(w http.ResponseWriter, r *http.Request) {
 		manageHtml(w, r)
 	case "manage/upload":
 		uploadFile(w, r)
+	case "manage/addBlackList":
+		AddIPBlackList(w, r)
+	case "manage/clearip":
+		ClearIpHistory(w, r)
 	default:
 		DefaultHandler(w, r)
 	}
@@ -76,4 +81,34 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "/static/%s", v.Filename)
 		}
 	}
+}
+
+// 清除ip访问记录
+func ClearIpHistory(w http.ResponseWriter, r *http.Request) {
+	res := tb.ClearIpHistoryN(10)
+	logs.Info("clear ip visit history result: numbers=%d", res)
+	fmt.Fprintf(w, "clear numbers=%d", res)
+}
+
+// 添加到IP黑名单
+func AddIPBlackList(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	type FormStruct struct {
+		IP string `json:"ip"`
+	}
+	var reqForm FormStruct
+	err := tb.MustQueryFromRequest(r, &reqForm)
+	if err != nil {
+		logs.Error("Parse form fail: err=%v req=%+v", err, r)
+		goto end
+	}
+	if net.ParseIP(reqForm.IP) == nil {
+		err = fmt.Errorf("unexpect IP format: id=%s", reqForm.IP)
+		logs.Warning(err)
+		goto end
+	}
+	tb.AddBlackList(reqForm.IP)
+	logs.Info("add IP to blackList success: IP=%s", reqForm.IP)
+end:
+	fmt.Fprintf(w, "result: err=%v", err)
 }

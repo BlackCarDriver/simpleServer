@@ -13,10 +13,12 @@ import (
 )
 
 func initMain() {
+	logs.SetLogFuncCall(true) // 文件名和行号
 	if config.ServerConfig.IsTest {
 		logs.SetLogger("console")
 	} else {
 		logs.SetLogger("file", `{"filename":"./log/server.log"}`)
+		logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
 	}
 	logs.EnableFuncCallDepth(true)
 	logs.SetLogFuncCallDepth(3)
@@ -35,7 +37,7 @@ func main() {
 // 第一层路由,所有的handler都经过这里
 func mainRouter(w http.ResponseWriter, r *http.Request) {
 	url := strings.Trim(fmt.Sprint(r.URL), "/")
-	logs.Info(url)
+	logs.Debug(url)
 	switch url {
 	case "favicon.ico": // 返回显示的图标
 		http.ServeFile(w, r, "./source/favicon.ico")

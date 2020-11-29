@@ -49,7 +49,7 @@ func GetUploadRecord(code string) (FileUpload, error) {
 	collection := database.C(CollectUploadFile)
 	query = collection.Find(bson.M{"code": code})
 	if query == nil {
-		logs.Info("find result is null: code=%s", code)
+		logs.Warning("find result is null: code=%s", code)
 		return record, ErrorNoRecord
 	}
 	err = query.One(&record)
@@ -87,7 +87,7 @@ func InsertCallDriverMessage(from, to, msg, ip string) error {
 			break
 		}
 	}
-	logs.Info("insert result: collection=%s err=%v record=%v", CollectCallDriverMsg, err, msg)
+	logs.Debug("insert result: collection=%s err=%v record=%v", CollectCallDriverMsg, err, msg)
 	return err
 }
 
@@ -120,7 +120,7 @@ func FindCallDriverMessage(nick string, num int) (history []CallDriverChat, err 
 			go UpdateCallDriverMessage(ids)
 		}
 	}
-	logs.Info("find result: collection=%s err=%v nick=%s history.len=%d",
+	logs.Debug("find result: collection=%s err=%v nick=%s history.len=%d",
 		CollectCallDriverMsg, err, nick, len(history))
 	return history, err
 }
@@ -141,7 +141,7 @@ func UpdateCallDriverMessage(ids []string) {
 		logs.Error("update callDriver chat fail: err=%v ids=%v", err, ids)
 		return
 	}
-	logs.Info("update message status success: total=%d update=%d", len(ids), info.Updated)
+	logs.Debug("update message status success: total=%d update=%d", len(ids), info.Updated)
 }
 
 // 查询所有聊天记录
@@ -162,6 +162,6 @@ func FindAllCallDriverMessage() (history []CallDriverChat, err error) {
 		}
 		query.All(&history)
 	}
-	logs.Info("find result: collection=%s err=%v history.len=%d", CollectCallDriverMsg, err, len(history))
+	logs.Debug("find result: collection=%s err=%v history.len=%d", CollectCallDriverMsg, err, len(history))
 	return history, err
 }

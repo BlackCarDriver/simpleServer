@@ -26,6 +26,7 @@ type serverConfig struct {
 
 type databaseConfig struct {
 	MongoURL string `xml:"mongo_url"` // 链接mongoDB的链接
+	MongodbName string `xml:"mongodbName"` // 库名
 }
 
 var MailConfig mailConfig

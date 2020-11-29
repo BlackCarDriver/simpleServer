@@ -35,7 +35,7 @@
         let url = "/callDriver/sendMessage?nick=" + encodeURIComponent(nick) +"&msg=" + encodeURIComponent(msg);
         fetch(url).then(resp=>{
           if (resp.ok){
-            startGetResponse(false)
+            startGetResponse(false)   // 发送消息后马上刷新
             clearInput()
           }else{
             alert("some worng happen, pleace check the log...")
@@ -47,7 +47,7 @@
         })
     }
     // 自动刷新查询消息
-    function startGetResponse(loop) {
+    function startGetResponse(loop, dur=100000) {
       let nick = document.getElementById("nickText").value
       if (nick.length > 0){
         let url="/callDriver/getHistory?nick="+encodeURIComponent(nick)
@@ -59,7 +59,10 @@
                   this.chatBuff = res.msg
                   document.getElementById("receiveText").innerHTML = this.chatBuff
                 }
-                if (res.status == 1)  alert("You receive a new Message!!!")
+                if (res.status == 1) {
+                  alert("You receive a new Message!!!")
+                  dur = 20000
+                }
             }else if(res.status==-1){
                 alert(res.msg)
             }else{
@@ -68,10 +71,13 @@
             }
         })
       }
+      if (dur < 15000) {
+        dur += 1000
+      }
       if (loop){
         setTimeout(() => {
-        startGetResponse(true)
-      }, 10000)
+        startGetResponse(true, dur)
+      }, dur)
       }
     }
     //清空输入框
@@ -108,7 +114,7 @@
     setTimeout(() => {
       document.getElementById("sendDiv").style.display = "block"
       document.getElementById("sendTab").className += " active"
-      startGetResponse(true)
+      startGetResponse(true, 5000)
     }, 300);
     </script>
     <!-- ================================================================================================= -->
@@ -123,7 +129,7 @@
       <button class="tablinks" onclick="changeTab(event, 'aboutDiv')">About It Site</button>
     </div>
     
-    <div id="sendDiv" class="tabcontent">
+    <div id="sendDiv">
             <div id="receiveText"  placeholder="no message yet..." disabled="true"></div>
             <textarea id="sendText" maxlength="200" class="ntc" placeholder="say something..."></textarea>
             <button onclick="sendMessage()" style="width: 100%;height: 2em;font-size: 16px;">Send</button>

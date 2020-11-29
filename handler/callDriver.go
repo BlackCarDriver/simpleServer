@@ -35,7 +35,7 @@ var sendEmail = true // 控制是否发送邮件的开关之一
 
 // CallDriver应用请求全部经过这里
 func CallDriverHandler(w http.ResponseWriter, r *http.Request) {
-	logs.Debug("callDriver url=%v", r.URL)
+	// logs.Debug("callDriver url=%v", r.URL)
 	url := strings.Trim(fmt.Sprintf("%s", r.URL.Path), "/")
 	switch url {
 	case "callDriver":
@@ -77,7 +77,6 @@ func callDriverReceiveMsg(w http.ResponseWriter, r *http.Request) {
 		}
 		req.Nick = strings.TrimSpace(req.Nick)
 		req.Msg = strings.TrimSpace(req.Msg)
-		logs.Info("Receive a message: %v", req)
 
 		// 参数检查
 		if len(req.Nick) < 2 || len(req.Msg) < 1 {
@@ -94,13 +93,12 @@ func callDriverReceiveMsg(w http.ResponseWriter, r *http.Request) {
 		// 保存聊天记录
 		err = model.InsertCallDriverMessage(req.Nick, myName, req.Msg, ip)
 		if err != nil {
-			logs.Error("Save to history fail: %v", err)
+			logs.Error("Save to history fail: err=%v", err)
 			break
 		}
 		// 发送邮箱通知
 		if config.ServerConfig.IsTest || !sendEmail {
-			logs.Info("Skip send email: isTest=%s  sendEmail=%v",
-				config.ServerConfig.IsTest, sendEmail)
+			logs.Info("Skip send email: isTest=%s  sendEmail=%v", config.ServerConfig.IsTest, sendEmail)
 			break
 		}
 		err = tb.SendToMySelf(req.Nick, req.Msg)
@@ -111,7 +109,7 @@ func callDriverReceiveMsg(w http.ResponseWriter, r *http.Request) {
 		logs.Info("Send mail success")
 	}
 
-	logs.Info("receive message result: req=%v err=%v", req, err)
+	logs.Info("hendle new message result: req=%+v err=%v", req, err)
 
 	if err != nil {
 		resp.Status = -1
@@ -146,7 +144,6 @@ func callDriverGetChatHistroy(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		req.Nick = strings.TrimSpace(req.Nick)
-		logs.Info("get history request: %v", req)
 
 		// 参数检查
 		if len(req.Nick) < 2 {
@@ -172,7 +169,7 @@ func callDriverGetChatHistroy(w http.ResponseWriter, r *http.Request) {
 		for idx := len(history) - 1; idx >= 0; idx-- {
 			v := history[idx]
 			if v.Status == 0 && v.From != req.Nick {
-				logs.Info("new message remark")
+				logs.Info("add new message remark")
 				resp.Status = 1
 			}
 			tstr := time.Unix(v.TimeStamp, 0).Format("01-02 15:04")
@@ -187,7 +184,7 @@ func callDriverGetChatHistroy(w http.ResponseWriter, r *http.Request) {
 		resp.Msg = divHtml
 	}
 
-	logs.Info("get histroy result: req=%v err=%v", req, err)
+	logs.Debug("get histroy result: req=%v err=%v", req, err)
 
 	if err != nil {
 		resp.Status = -1
@@ -292,7 +289,7 @@ func callDriverGetAllChat(w http.ResponseWriter, r *http.Request) {
 		resp.Msg = divHtml
 	}
 
-	logs.Info("get histroy result: err=%v", err)
+	logs.Debug("get histroy result: err=%v", err)
 
 	if err != nil {
 		resp.Status = -1
@@ -319,7 +316,7 @@ func callDriverSetMail(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		switch req.Key {
-		case "sendMail":
+		case "sendMail": // 控制是否发送邮件
 			var sendOrNot bool
 			sendOrNot, err = strconv.ParseBool(req.Value)
 			if err == nil {

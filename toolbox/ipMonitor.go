@@ -58,3 +58,15 @@ func GetAndAddIpVisitTimes(ip string) int {
 	readMux.Unlock()
 	return times
 }
+
+// 删减IpHistory的记录，次数低于n的清除,返回清楚的数量
+func ClearIpHistoryN(n int) int {
+	count := 0
+	for k, v := range IpHistory {
+		if v < n {
+			delete(IpHistory, k)
+			count++
+		}
+	}
+	return count
+}

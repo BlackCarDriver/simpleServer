@@ -35,16 +35,25 @@
     <h1 style="margin: 0;text-align: center;">Manage</h1>
     <div>
         <b>文件上传</b>
-        <form action="/manage/upload" method="post" enctype="multipart/form-data">
+        <form name="uploadfile" action="/manage/upload" method="post" enctype="multipart/form-data">
             <input type="file" name="file">
             <input type="submit">
         </form>
+
+        <b>添加IP黑名单</b>
+        <form name="addBlackList" action="/manage/addBlackList" method="post">
+            <input type="text" name="ip">
+            <input type="submit">
+        </form>
+
     </div>
     <div>
         <b>相关链接</b>
         <a class="mylink" href="/reqLog" target="null">reqLog</a>
         <a class="mylink" href="/reqMsg" target="null">reqMsg</a>
+        <a class="mylink" href="/callDriver" target="null">callDriver Guest</a>
         <a class="mylink" href="/callDriver/boss" target="null">callDriver Boss</a>
+        <a class="mylink" href="/manage/clearip" target="null">clear ip log</a>
     </div>
     </div>
 </body>
