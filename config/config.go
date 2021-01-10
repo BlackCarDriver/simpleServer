@@ -18,15 +18,16 @@ type mailConfig struct {
 
 type serverConfig struct {
 	AuthorityKey  string `xml:"authority_key"` // 将ip加入到白名单的路由地址
-	IsTest        bool   `xml:"is_test"`
-	DownloadUrlTp string `xml:"download_url"` // 请求下载文件的url模板
-	SourcePathTp  string `xml:"source_path"`  // 文件上传和下载的文件路径模板
-	StaticPathTP  string `xml:"statis_path"`  //存储静态文件的位置
+	IsTest        bool   `xml:"is_test"`       // 是否测试环境
+	DownloadUrlTp string `xml:"download_url"`  // 请求下载文件的url模板
+	SourcePathTp  string `xml:"source_path"`   // 文件上传和下载的文件路径模板
+	StaticPathTP  string `xml:"statis_path"`   // 存储静态文件的位置
 }
 
 type databaseConfig struct {
-	MongoURL string `xml:"mongo_url"` // 链接mongoDB的链接
-	MongodbName string `xml:"mongodbName"` // 库名
+	UseMongo    bool   `xml:"useMongo"`    // 是否链接mongo数据库
+	MongoURL    string `xml:"mongoUrl"`    // 链接mongoDB的链接
+	MongodbName string `xml:"mongodbName"` // 使用的mongoDB数据库名称
 }
 
 var MailConfig mailConfig

@@ -10,6 +10,10 @@ import (
 	"github.com/astaxie/beego/logs"
 )
 
+func init() {
+	initCloner()
+}
+
 // 查看并返回请求详情
 func GetRequestDetail(w http.ResponseWriter, r *http.Request) {
 	RecordRequest(r, "")
@@ -87,5 +91,3 @@ func RecordRequest(req *http.Request, preFix string) {
 	}
 	logs.Info(log)
 }
-
-//

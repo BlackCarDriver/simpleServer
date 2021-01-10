@@ -13,11 +13,11 @@ import (
 )
 
 func initMain() {
-	logs.SetLogFuncCall(true) // 文件名和行号
+	logs.SetLogFuncCall(true) // 文件名和行号HandleTest
 	if config.ServerConfig.IsTest {
 		logs.SetLogger("console")
 	} else {
-		logs.SetLogger("file", `{"filename":"./log/server.log"}`)
+		logs.SetLogger("file", `{"filename":"./server.log"}`)
 		logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
 	}
 	logs.EnableFuncCallDepth(true)
@@ -26,7 +26,6 @@ func initMain() {
 
 func main() {
 	initMain()
-
 	http.HandleFunc("/", mainRouter)
 	err := http.ListenAndServe(":80", nil)
 	if err != nil {

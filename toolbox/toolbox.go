@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"reflect"
 	"strconv"
 	"time"
@@ -18,6 +19,7 @@ import (
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
+	initMailSender()
 }
 
 // 从请求中获取IP和端口
@@ -110,6 +112,48 @@ func CheckFileExist(path string) bool {
 		return false
 	}
 	return true
+}
+
+// 将数据保存到指定路径的文件中，若文件不存在会自动创建，否则跳过
+func WriteToFile(filePath string, data []byte) error {
+	var err error
+	// 若文件已存在则跳过
+	if _, err = os.Stat(filePath); err == nil {
+		logs.Warn("skip save file because already exist: filePath=%s", filePath)
+		return nil
+	}
+	if err != nil && os.IsNotExist(err) == false {
+		logs.Error("save to file false: error=%v path=%s data=%s", err, filePath, string(data))
+		return err
+	}
+	// 若路径不存在则创建
+	dir, _ := path.Split(filePath)
+	_, err = os.Stat(dir)
+	if err != nil && os.IsNotExist(err) {
+		err = os.MkdirAll(dir, 0666)
+		if err != nil {
+			logs.Error("create directory fail: path=%s error=%v", dir, err)
+			return err
+		}
+		logs.Info("create a directory: dir=%q", dir)
+	}
+	err = ioutil.WriteFile(filePath, data, 0644)
+	if err != nil {
+		logs.Error("write file fail: error=%v", err)
+	}
+	return err
+}
+
+// 检查一个目录是否存在
+func CheckDirExist(dir string) bool {
+	info, err := os.Stat(dir)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			logs.Error("error with file exist: %v", err)
+		}
+		return false
+	}
+	return info.IsDir()
 }
 
 // 将Get请求或Post请求中传输的参数赋值到结构体里面的字段

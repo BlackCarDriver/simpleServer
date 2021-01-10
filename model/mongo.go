@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,9 +11,24 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+// 统一拦截mongo数据查询请求
+func commonBlocker() error {
+	if !isInitMongo {
+		return errors.New("mongo is not init")
+	}
+	return nil
+}
+
+// =============================================
+
 // 记录文件上传信息
 func InsertUploadRecord(fileName string, code string, size int64) error {
 	var err error
+	if err = commonBlocker(); err != nil {
+		logs.Error("%v", err)
+		return err
+	}
+
 	for loop := true; loop; loop = false {
 		if fileName == "" || code == "" {
 			err = fmt.Errorf("unexpcet params: fileName=%s code=%s", fileName, code)
@@ -46,6 +62,11 @@ func GetUploadRecord(code string) (FileUpload, error) {
 	var err error
 	var query *mgo.Query
 
+	if err = commonBlocker(); err != nil {
+		logs.Error("%v", err)
+		return record, err
+	}
+
 	collection := database.C(CollectUploadFile)
 	query = collection.Find(bson.M{"code": code})
 	if query == nil {
@@ -59,9 +80,15 @@ func GetUploadRecord(code string) (FileUpload, error) {
 	return record, err
 }
 
+// =============== CallDriver ==================
 // 保存callDriver应用中收到的来自其他用户的消息
 func InsertCallDriverMessage(from, to, msg, ip string) error {
 	var err error
+	if err = commonBlocker(); err != nil {
+		logs.Error("%v", err)
+		return err
+	}
+
 	ts := time.Now().Unix()
 	record := CallDriverChat{
 		ID:        fmt.Sprintf("%d%s", ts, tb.GetRandomString(3)),
@@ -94,6 +121,10 @@ func InsertCallDriverMessage(from, to, msg, ip string) error {
 // 查询callDriver应用的聊天记录
 func FindCallDriverMessage(nick string, num int) (history []CallDriverChat, err error) {
 	history = make([]CallDriverChat, 0)
+	if err = commonBlocker(); err != nil {
+		logs.Error("%v", err)
+		return history, err
+	}
 	for loop := true; loop; loop = false {
 		if nick == "" || num <= 0 {
 			err = fmt.Errorf("unexpect params: nick=%s num=%d", nick, num)
@@ -127,6 +158,11 @@ func FindCallDriverMessage(nick string, num int) (history []CallDriverChat, err 
 
 // 记录聊天记录已读,status自增1
 func UpdateCallDriverMessage(ids []string) {
+	var err error
+	if err = commonBlocker(); err != nil {
+		logs.Error("%v", err)
+		return
+	}
 	if ids == nil || len(ids) == 0 {
 		logs.Warning("unexpect params: ids=%v", ids)
 		return
@@ -147,6 +183,10 @@ func UpdateCallDriverMessage(ids []string) {
 // 查询所有聊天记录
 func FindAllCallDriverMessage() (history []CallDriverChat, err error) {
 	history = make([]CallDriverChat, 0)
+	if err = commonBlocker(); err != nil {
+		logs.Error("%v", err)
+		return history, err
+	}
 	for loop := true; loop; loop = false {
 		collection := database.C(CollectCallDriverMsg)
 		if collection == nil {

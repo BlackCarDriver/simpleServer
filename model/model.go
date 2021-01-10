@@ -20,11 +20,16 @@ var (
 
 //全局对象
 var (
-	session  *mgo.Session  = nil
-	database *mgo.Database = nil
+	session     *mgo.Session  = nil
+	database    *mgo.Database = nil
+	isInitMongo               = false
 )
 
 func init() {
+	if !config.DataBaseConfig.UseMongo {
+		logs.Warn("skip init databse because config UseMongo=false")
+		return
+	}
 	// 链接mongo
 	var err error
 	session, err = mgo.Dial(config.DataBaseConfig.MongoURL)
@@ -36,8 +41,11 @@ func init() {
 	if database == nil {
 		logs.Error("Connect to database fail: dbName=%s", config.DataBaseConfig.MongodbName)
 	}
+	isInitMongo = true
 	logs.Info("mongoDB init success...")
 }
+
+// ============== mongoDB 结构体 ========================
 
 // 上传文件保存后对应的文件名和下载码
 type FileUpload struct {

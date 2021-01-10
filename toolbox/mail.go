@@ -8,15 +8,32 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
+// 相关配置
+var (
+	agentHost string
+	agentPort int
+	agentUser string
+	agentPass string
+)
+
+func initMailSender() {
+	logs.Info("mail sender init...")
+	agentHost = config.MailConfig.MailHost
+	agentPort = config.MailConfig.MailPort
+	agentUser = config.MailConfig.MailUser
+	agentPass = config.MailConfig.MailPass
+}
+
+// 发送邮箱接口
 func sendMail(mailTo []string, subject string, body string) error {
 	d := gomail.NewDialer(
-		config.MailConfig.MailHost,
-		config.MailConfig.MailPort,
-		config.MailConfig.MailUser,
-		config.MailConfig.MailPass,
+		agentHost,
+		agentPort,
+		agentUser,
+		agentPass,
 	)
 	m := gomail.NewMessage()
-	m.SetHeader("From", m.FormatAddress(config.MailConfig.MailUser, "CallDriver")) //添加别名
+	m.SetHeader("From", m.FormatAddress(agentUser, "CallDriver")) //添加别名
 	m.SetHeader("To", mailTo...)
 	m.SetHeader("Subject", subject)
 	m.SetBody("text/html", body)
