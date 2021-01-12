@@ -2,6 +2,7 @@ package toolbox
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -156,6 +157,29 @@ func CheckDirExist(dir string) bool {
 	return info.IsDir()
 }
 
+// 读取一个文件的文本数据,以json格式解析到某个结构体中, ptrToTarget必须是指针
+func ParseJsonFromFile(filePath string, ptrToTarget interface{}) (err error) {
+	defer func() {
+		msg, ok := recover().(interface{})
+		if ok {
+			var errptr = &err
+			*errptr = fmt.Errorf("catch panic: err=%v", msg)
+		}
+	}()
+	if !CheckFileExist(filePath) {
+		return fmt.Errorf("file not exist: path=%s", filePath)
+	}
+	// 确认是指针
+	rType := reflect.TypeOf(ptrToTarget)
+	if rType.Kind() != reflect.Ptr {
+		return fmt.Errorf("target not a pointer: type=%v", rType.Kind())
+	}
+	var text string
+	text, err = ParseFile(filePath)
+	err = json.Unmarshal([]byte(text), &ptrToTarget)
+	return err
+}
+
 // 将Get请求或Post请求中传输的参数赋值到结构体里面的字段
 // ptrToTargetb必须为一个指向结构体的指针, 且通过'json标签'来指定从表单中获取数据的关键字
 // 注意事项：只有全部字段都在表单中找到并且转换成功才返回nil; 即使返回err不为空,目标结构体可能被改变;
@@ -167,7 +191,6 @@ func MustQueryFromRequest(req *http.Request, ptrToTarget interface{}) (err error
 			var errptr = &err
 			*errptr = fmt.Errorf("catch panic: err=%v", msg)
 		}
-		logs.Info("convert result: error=%v  target=%v", err, ptrToTarget)
 	}()
 
 	if req == nil {

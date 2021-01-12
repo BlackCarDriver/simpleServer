@@ -24,8 +24,14 @@ func initMain() {
 	logs.SetLogFuncCallDepth(3)
 }
 
+// 一些特定功能的处理器
+var (
+	blogHandler = handler.CreateHandler("D:/WorkPlace/Git WorPlace/CloneWebSite/blog", "bolg")
+)
+
 func main() {
 	initMain()
+	// http.HandleFunc("/", handler.CloneAgent) // 网站克隆
 	http.HandleFunc("/", mainRouter)
 	err := http.ListenAndServe(":80", nil)
 	if err != nil {
@@ -36,6 +42,9 @@ func main() {
 // 第一层路由,所有的handler都经过这里
 func mainRouter(w http.ResponseWriter, r *http.Request) {
 	url := strings.Trim(fmt.Sprint(r.URL), "/")
+	if url == "" { // 空路由转跳到空壳博客
+		http.Redirect(w, r, "/blog", http.StatusPermanentRedirect)
+	}
 	logs.Debug(url)
 	switch url {
 	case "favicon.ico": // 返回显示的图标
@@ -58,24 +67,14 @@ func mainRouter(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// 在handler外包装一层控制是权限和请求信息记录
-func wrapper(defHandler http.HandlerFunc, w http.ResponseWriter, r *http.Request, auth bool, record bool) {
-	if auth && !config.ServerConfig.IsTest { // 正式环境下校检特定请求的ip
-		if !tb.IsInWhiteList(r) {
-			handler.DefaultHandler(w, r)
-			return
-		}
-	}
-	if record {
-		handler.RecordRequest(r, "")
-	}
-	defHandler(w, r)
-}
-
 // 处理模糊匹配的路由
 func regexHandler(w http.ResponseWriter, r *http.Request, url string) {
-	if !config.ServerConfig.IsTest && !tb.IsInWhiteList(r) { // 正式环境下校检特定请求的ip
+	if !config.ServerConfig.IsTest && !tb.IsInWhiteList(r) { // 正式环境下对ip做拦截
 		handler.DefaultHandler(w, r)
+		return
+	}
+	if strings.HasPrefix(url, "") { // 空壳博客
+		blogHandler(w, r)
 		return
 	}
 	if regexp.MustCompile("^download/[a-z]{5,20}$").MatchString(url) { // 下载文件
@@ -95,4 +94,18 @@ func regexHandler(w http.ResponseWriter, r *http.Request, url string) {
 		return
 	}
 	handler.DefaultHandler(w, r)
+}
+
+// 在handler外包装一层控制是权限和请求信息记录
+func wrapper(defHandler http.HandlerFunc, w http.ResponseWriter, r *http.Request, auth bool, record bool) {
+	if auth && !config.ServerConfig.IsTest { // 正式环境下校检特定请求的ip
+		if !tb.IsInWhiteList(r) {
+			handler.DefaultHandler(w, r)
+			return
+		}
+	}
+	if record {
+		handler.RecordRequest(r, "")
+	}
+	defHandler(w, r)
 }

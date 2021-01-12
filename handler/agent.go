@@ -1,19 +1,23 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"../toolbox"
 	"github.com/astaxie/beego/logs"
 )
 
 var (
-	saveRoot    = "D:/TEMP/Clone"                // 克隆网站时响应体保存位置的根路径
-	targetUrlTP = "https://biaochenxuying.cn/%s" // 修改这里改变需要克隆的目标网站
+	saveRoot    = "D:/WorkPlace/Git WorPlace/CloneWebSite/blog" // 克隆网站时响应体保存位置的根路径
+	targetUrlTP = "https://biaochenxuying.cn/%s"                // 修改这里改变需要克隆的目标网站
+	headerMap   = make(map[string]http.Header)
 )
 
 func initCloner() {
@@ -27,9 +31,20 @@ func initCloner() {
 	}
 }
 
-// 正向代理浏览网站并保存响应数据到本地
+// 作用:通过正向代理浏览网站，将所有请求得到的响应数据保存到$saveRoot,用于克隆目标网站
+// 使用方法：http.HandleFunc("/", CloneAgent), 浏览完目标网站后访问/exit，生成响应头数据
 func CloneAgent(w http.ResponseWriter, r *http.Request) {
-	req, _ := http.NewRequest(r.Method, newURI(r.RequestURI), r.Body)
+	if r.RequestURI == "/exit" { // 保存响应头
+		headData, _ := json.Marshal(headerMap)
+		targetPath := fmt.Sprintf("%s/header.json", saveRoot)
+		err := toolbox.WriteToFile(targetPath, headData)
+		fmt.Fprintf(w, "save header result: error=%v  goodbey", err)
+		time.Sleep(3 * time.Second)
+		os.Exit(0)
+	}
+
+	newURI := fmt.Sprintf(targetUrlTP, strings.Trim(r.RequestURI, "/"))
+	req, _ := http.NewRequest(r.Method, newURI, r.Body)
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
 		logs.Error("Request fail: error=%v method=%v URI=%v", err, r.Body, r.RequestURI)
@@ -37,54 +52,78 @@ func CloneAgent(w http.ResponseWriter, r *http.Request) {
 	}
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
-	saveResponse(r.RequestURI, body)
-	logs.Debug("URI=%s  header=%+v", r.RequestURI, res.Header)
+	tmpUri := saveResponse(r.RequestURI, body)
+	headerMap[tmpUri] = res.Header
+
 	for k, v := range res.Header {
 		w.Header().Set(k, v[0])
 	}
 	w.Write(body)
 }
 
-// 本地浏览缓存下来的页面
-func ServerWithBuff(w http.ResponseWriter, r *http.Request) {
-	URI := r.RequestURI
+// 创建一个反向代理处理器,(专门用于返回cloneAgent缓存下来的请求响应体)
+// fileRoot：缓存文件保存的根目录, rmPrefix: 根据访问URI寻找文件路径时去除的URL前缀,无需斜杠
+func CreateHandler(fileRoot, rmPrefix string) http.HandlerFunc {
+	if !toolbox.CheckDirExist(fileRoot) {
+		logs.Emergency("fileRoot not exist: fileRoot=%s", fileRoot)
+	}
+
+	// 读取保存的响应头数据
+	headerPath := fmt.Sprintf("%s/header.json", saveRoot)
+	headerData := make(map[string]http.Header)
+	err := toolbox.ParseJsonFromFile(headerPath, &headerData)
+	logs.Info("createHeader: fileRoot=%s headerSize=%d error=%v", fileRoot, len(headerData), err)
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		URI := r.RequestURI
+		URI = strings.TrimLeft(URI, "/")
+		if rmPrefix != "" {
+			URI = strings.TrimLeft(URI, rmPrefix)
+			URI = strings.TrimLeft(URI, "/")
+		}
+		if URI == "" {
+			logs.Warn("auto use index to save response")
+			URI = "index.html"
+		}
+		targetPath := fmt.Sprintf("%s/%s", fileRoot, URI)
+		// 若为api请求，则修改文件名
+		if strings.Contains(URI, "?") {
+			URI = remakeURI(URI)
+			targetPath = fmt.Sprintf("%s/%s", saveRoot, URI)
+		}
+
+		logs.Debug("targetPath=%s", targetPath)
+		header, canfind := headerData[URI]
+		if canfind {
+			logs.Debug("setheader size=%d", len(header))
+			for k, v := range header {
+				w.Header().Set(k, v[0])
+			}
+		} else {
+			setDefaultHeader(&w, r.RequestURI)
+		}
+		http.ServeFile(w, r, targetPath)
+	}
+}
+
+// ========================================================
+
+// 请求目标网站的数据并保存响应主体,若目标文件已存在则跳过, 返回一个可识别保存路径的URI
+func saveResponse(URI string, data []byte) string {
 	URI = strings.TrimLeft(URI, "/")
 	if URI == "" {
 		logs.Warn("auto use index to save response")
 		URI = "index.html"
 	}
-	// 若为api请求，则修改文件名
+	targetPath := fmt.Sprintf("%s/%s", saveRoot, URI)
+	// 对api请求的响应进行进行特殊处理
 	if strings.Contains(URI, "?") {
 		URI = remakeURI(URI)
+		targetPath = fmt.Sprintf("%s/%s", saveRoot, URI)
 	}
-	targetPath := fmt.Sprintf("%s/%s", saveRoot, URI)
-	logs.Debug("targetPath=%s", targetPath)
-	setHeader(&w, r.RequestURI)
-	http.ServeFile(w, r, targetPath)
-}
-
-// 代理中URL的转换
-func newURI(oldURI string) string {
-
-	newURI := fmt.Sprintf(targetUrlTP, strings.Trim(oldURI, "/"))
-	logs.Debug("%s ---> %s", oldURI, newURI)
-	return newURI
-}
-
-// 保存响应主体
-func saveResponse(URI string, data []byte) {
-	URI = strings.TrimLeft(URI, "/")
-	if URI == "" {
-		logs.Warn("auto use index to save response")
-		URI = "index.html"
-	}
-	// 若为api请求，则修改文件名
-	if strings.Contains(URI, "?") {
-		URI = remakeURI(URI)
-	}
-	targetPath := fmt.Sprintf("%s/%s", saveRoot, URI)
 	err := toolbox.WriteToFile(targetPath, data)
 	logs.Debug("save response result: targetPath=%s error=%v", targetPath, err)
+	return URI
 }
 
 // 用于保存响应体到本地时，重构文件名，将非法字符用下划线代替
@@ -94,13 +133,15 @@ func remakeURI(URI string) string {
 		return URI
 	}
 	path := URI[0:index]
-	name := strings.TrimLeft(URI[index:], "?")
-	name = regexp.MustCompile(`[\/:*?"<>|]`).ReplaceAllString(name, "_")
-	return fmt.Sprintf("%s/%s", path, name)
+	path = strings.TrimLeft(path, "/")
+	path = strings.TrimLeft(path, "api")
+	params := strings.TrimLeft(URI[index:], "?")
+	params = regexp.MustCompile(`[\/:*?"<>|]`).ReplaceAllString(params, "_")
+	return fmt.Sprintf("api/%s/%s.json", path, params)
 }
 
 // 用于返回保存在本地的数据时设置响应头header
-func setHeader(w *http.ResponseWriter, URI string) {
+func setDefaultHeader(w *http.ResponseWriter, URI string) {
 	(*w).Header().Set("Connection", "keep-alive")
 	logs.Debug("URI=%s", URI)
 	if URI == "/project" {

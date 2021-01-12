@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	initCloner()
+	// initCloner()
 }
 
 // 查看并返回请求详情
@@ -65,7 +65,7 @@ func AddIpToWhiteList(w http.ResponseWriter, r *http.Request) {
 // 处理没有找到正确路由的请求
 func DefaultHandler(w http.ResponseWriter, r *http.Request) {
 	RecordRequest(r, "🚫")
-	// fmt.Fprint(w, "It is the host of BlackCarDriver....🚓")
+	w.WriteHeader(http.StatusNotFound)
 	http.ServeFile(w, r, "./source/hello.html")
 }
 
