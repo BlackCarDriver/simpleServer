@@ -14,14 +14,14 @@ import (
 
 func initMain() {
 	logs.SetLogFuncCall(true) // 文件名和行号HandleTest
+	logs.SetLogFuncCallDepth(3)
+	logs.EnableFuncCallDepth(true)
 	if config.ServerConfig.IsTest {
 		logs.SetLogger("console")
 	} else {
 		logs.SetLogger("file", `{"filename":"./server.log"}`)
-		logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
+		// logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
 	}
-	logs.EnableFuncCallDepth(true)
-	logs.SetLogFuncCallDepth(3)
 }
 
 // 一些特定功能的处理器
@@ -45,6 +45,7 @@ func mainRouter(w http.ResponseWriter, r *http.Request) {
 	if url == "" { // 空路由转跳到空壳博客
 		http.Redirect(w, r, "/blog", http.StatusPermanentRedirect)
 	}
+
 	logs.Debug(url)
 	switch url {
 	case "favicon.ico": // 返回显示的图标
@@ -69,14 +70,17 @@ func mainRouter(w http.ResponseWriter, r *http.Request) {
 
 // 处理模糊匹配的路由
 func regexHandler(w http.ResponseWriter, r *http.Request, url string) {
+
+	if strings.HasPrefix(url, "blog") { // 空壳博客
+		blogHandler(w, r)
+		return
+	}
+
 	if !config.ServerConfig.IsTest && !tb.IsInWhiteList(r) { // 正式环境下对ip做拦截
 		handler.DefaultHandler(w, r)
 		return
 	}
-	if strings.HasPrefix(url, "") { // 空壳博客
-		blogHandler(w, r)
-		return
-	}
+
 	if regexp.MustCompile("^download/[a-z]{5,20}$").MatchString(url) { // 下载文件
 		wrapper(handler.DownloadFile, w, r, true, true)
 		return
