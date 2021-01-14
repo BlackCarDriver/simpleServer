@@ -23,6 +23,7 @@ var (
 func initCloner() {
 	logs.Info("cloner init...")
 	saveRoot = strings.TrimRight(saveRoot, "/")
+
 	if saveRoot == "" {
 		logs.Emergency("config saveRoot can't be null")
 	}
@@ -68,12 +69,6 @@ func CreateHandler(fileRoot, rmPrefix string) http.HandlerFunc {
 		logs.Emergency("fileRoot not exist: fileRoot=%s", fileRoot)
 	}
 
-	// 读取保存的响应头数据
-	headerPath := fmt.Sprintf("%s/header.json", saveRoot)
-	headerData := make(map[string]http.Header)
-	err := toolbox.ParseJsonFromFile(headerPath, &headerData)
-	logs.Info("createHeader: fileRoot=%s headerSize=%d error=%v", fileRoot, len(headerData), err)
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		URI := r.RequestURI
 		URI = strings.TrimLeft(URI, "/")
@@ -89,19 +84,9 @@ func CreateHandler(fileRoot, rmPrefix string) http.HandlerFunc {
 		// 若为api请求，则修改文件名
 		if strings.Contains(URI, "?") {
 			URI = remakeURI(URI)
-			targetPath = fmt.Sprintf("%s/%s", saveRoot, URI)
+			targetPath = fmt.Sprintf("%s/%s", fileRoot, URI)
 		}
-
 		logs.Debug("targetPath=%s", targetPath)
-		header, canfind := headerData[URI]
-		if canfind {
-			logs.Debug("setheader size=%d", len(header))
-			for k, v := range header {
-				w.Header().Set(k, v[0])
-			}
-		} else {
-			setDefaultHeader(&w, r.RequestURI)
-		}
 		http.ServeFile(w, r, targetPath)
 	}
 }

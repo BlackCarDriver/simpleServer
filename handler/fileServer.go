@@ -159,7 +159,6 @@ func StatisHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-
 	file, err := os.Open(filePath)
 	if err != nil {
 		logs.Error("open file fail: %v", err)
