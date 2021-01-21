@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
 
+	"../config"
 	tb "../toolbox"
 
 	"github.com/astaxie/beego/logs"
@@ -47,7 +49,7 @@ func GetRequestDetail(w http.ResponseWriter, r *http.Request) {
 // 获取访问日志
 func GetReqLogs(w http.ResponseWriter, r *http.Request) {
 	visitStr := tb.GetStatic()
-	logStr, err := tb.ParseFile("./log/server.log")
+	logStr, err := tb.ParseFile(config.ServerConfig.LogPath)
 	if err != nil {
 		logs.Error("read logs file fail: %v", err)
 	}
@@ -90,4 +92,13 @@ func RecordRequest(req *http.Request, preFix string) {
 		log = "🔥" + log
 	}
 	logs.Info(log)
+}
+
+func responseJson(w *http.ResponseWriter, payload interface{}) {
+	bytes, err := json.Marshal(payload)
+	if err != nil {
+		logs.Error("json marshal error: payload=%+v error=%v", payload, err)
+		return
+	}
+	fmt.Fprintf(*w, "%s", bytes)
 }

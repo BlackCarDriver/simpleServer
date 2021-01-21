@@ -23,7 +23,7 @@ func initMain() {
 	if config.ServerConfig.IsTest {
 		logs.SetLogger("console")
 	} else {
-		logs.SetLogger("file", `{"filename":"./server.log"}`)
+		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s"}`, config.ServerConfig.LogPath))
 		// logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
 	}
 	blogHandler = handler.CreateHandler(config.ServerConfig.CloneBlogPath, "bolg")
@@ -31,16 +31,12 @@ func initMain() {
 
 func main() {
 	initMain()
-	// http.HandleFunc("/", handler.CloneAgent) // 网站克隆
-	// http.HandleFunc("/", mainRouter)
-	// err := http.ListenAndServe(":80", nil)
-	// if err != nil {
-	// 	logs.Error("Run server fail: %v", err)
-	// }
 	muxer := http.NewServeMux()
 	muxer.Handle("/", MakeHandler(defaultHandler))
-	muxer.Handle("/blog/", blogHandler)
-	muxer.Handle("/callDriver/", MakeHandler(handler.CallDriverHandler))
+	muxer.Handle("/blog/", blogHandler)                                  // 空壳博客
+	muxer.Handle("/boss/", MakeHandler(handler.BossFontEndHandler))      // 管理后台
+	muxer.Handle("/bsapi/", MakeHandler(handler.BossAPIHandler))         // 管理后台api
+	muxer.Handle("/callDriver/", MakeHandler(handler.CallDriverHandler)) // callDriver应用
 	muxer.Handle("/manage/", MakeHandler(handler.ManageHandler))
 
 	err := http.ListenAndServe(":80", muxer)
@@ -90,7 +86,7 @@ func regexHandler(w http.ResponseWriter, r *http.Request, url string) {
 	handler.DefaultHandler(w, r)
 }
 
-// 在handler外包装一层控制是权限和请求信息记录
+// 在handler外包装一层, 控制是否进行ip拦截和请求详情记录
 func wrapper(defHandler http.HandlerFunc, w http.ResponseWriter, r *http.Request, auth bool, record bool) {
 	if auth && !config.ServerConfig.IsTest { // 正式环境下校检特定请求的ip
 		if !tb.IsInWhiteList(r) {

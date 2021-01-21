@@ -23,6 +23,8 @@ type serverConfig struct {
 	SourcePathTp  string `xml:"source_path"`     // 文件上传和下载的文件路径模板
 	StaticPathTP  string `xml:"statis_path"`     // 存储静态文件的位置
 	CloneBlogPath string `xml:"clone_blog_path"` // 克隆网站存储的位置
+	LogPath       string `xml:"log_path"`        // 日志存储的位置
+	BossPath      string `xml:"boss_path"`       // 管理后台前端构建文件路径
 }
 
 type databaseConfig struct {
