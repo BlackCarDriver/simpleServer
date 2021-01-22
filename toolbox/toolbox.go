@@ -93,6 +93,30 @@ func ServerFile(w http.ResponseWriter, filePath string, fileName string, size in
 	return nil
 }
 
+// ServerFile重置版本
+func ServerFile2(w *http.ResponseWriter, filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	fileState, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if fileState.IsDir() {
+		return fmt.Errorf("it is floder")
+	}
+	(*w).Header().Set("Content-Type", "application/octet-stream")
+	(*w).Header().Set("Content-Length", fmt.Sprint(fileState.Size()))
+	(*w).Header().Set("content-disposition", fmt.Sprintf("attachment; filename=%s", fileState.Name()))
+	_, err = io.Copy(*w, file)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // 生成一个随机字符串
 func GetRandomString(l int) string {
 	str := "abcdefghijklmnopqrstuvwxyz"
@@ -233,7 +257,7 @@ func MustQueryFromRequest(req *http.Request, ptrToTarget interface{}) (err error
 
 		// 从请求表单中获取相应值
 		rawStr := req.Form.Get(jsTag)
-		if rawStr == "" && tmpVal.Kind() != reflect.String {
+		if rawStr == "" || tmpVal.Kind() != reflect.String {
 			return fmt.Errorf("field not found in query form: index=%d name=%s jsTag=%s form=%v", i, vname, jsTag, req.Form)
 		}
 

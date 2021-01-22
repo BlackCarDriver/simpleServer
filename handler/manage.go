@@ -65,7 +65,7 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			defer file.Close()
-			filePath := fmt.Sprintf(config.ServerConfig.StaticPathTP, v.Filename)
+			filePath := config.ServerConfig.StaticPath + v.Filename
 			cur, err := os.Create(filePath)
 			if err != nil {
 				logs.Error("create file fial:　err=%v path=%s", err, filePath)

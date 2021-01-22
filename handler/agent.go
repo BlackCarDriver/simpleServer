@@ -80,11 +80,11 @@ func CreateHandler(fileRoot, rmPrefix string) http.HandlerFunc {
 			logs.Warn("auto use index to save response")
 			URI = "index.html"
 		}
-		targetPath := fmt.Sprintf("%s/%s", fileRoot, URI)
+		targetPath := fileRoot + URI
 		// 若为api请求，则修改文件名
 		if strings.Contains(URI, "?") {
 			URI = remakeURI(URI)
-			targetPath = fmt.Sprintf("%s/%s", fileRoot, URI)
+			targetPath = fileRoot + URI
 		}
 		logs.Debug("targetPath=%s", targetPath)
 		http.ServeFile(w, r, targetPath)

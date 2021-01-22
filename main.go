@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 
 	"./config"
@@ -23,13 +25,20 @@ func initMain() {
 	if config.ServerConfig.IsTest {
 		logs.SetLogger("console")
 	} else {
-		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s"}`, config.ServerConfig.LogPath))
+		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s", "daily ": "false"}`, config.ServerConfig.LogPath))
 		// logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
 	}
 	blogHandler = handler.CreateHandler(config.ServerConfig.CloneBlogPath, "bolg")
 }
 
+func test() {
+	res, err := url.QueryUnescape("/static/preview/%E5%8A%A8%E7%94%BB%E7%89%87.mp4")
+	logs.Debug("res=%q  error=%v", res, err)
+	os.Exit(0)
+}
+
 func main() {
+	// test()
 	initMain()
 	muxer := http.NewServeMux()
 	muxer.Handle("/", MakeHandler(defaultHandler))
@@ -37,6 +46,7 @@ func main() {
 	muxer.Handle("/boss/", MakeHandler(handler.BossFontEndHandler))      // 管理后台
 	muxer.Handle("/bsapi/", MakeHandler(handler.BossAPIHandler))         // 管理后台api
 	muxer.Handle("/callDriver/", MakeHandler(handler.CallDriverHandler)) // callDriver应用
+	muxer.Handle("/static/", MakeHandler(handler.StaticHandler))         // 静态文件存储服务
 	muxer.Handle("/manage/", MakeHandler(handler.ManageHandler))
 
 	err := http.ListenAndServe(":80", muxer)
@@ -54,36 +64,17 @@ func defaultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	logs.Debug("default handler: url=%s", url)
 	switch url {
-	case "favicon.ico": // 返回显示的图标
+	case "favicon.ico": // 返回浏览器标签显示的图标
 		http.ServeFile(w, r, "./source/favicon.ico")
 	case "reqMsg": // 查看请求的详细信息
 		wrapper(handler.GetRequestDetail, w, r, true, true)
 	case "reqLog": // 查看请求日志
 		wrapper(handler.GetReqLogs, w, r, true, true)
-	case "upload": // 上传文件
-		wrapper(handler.UploadFile, w, r, true, true)
 	case config.ServerConfig.AuthorityKey: // 将ip地址加入权限列表
 		handler.AddIpToWhiteList(w, r)
 	default:
-		regexHandler(w, r, url)
-	}
-}
-
-// 处理模糊匹配的路由
-func regexHandler(w http.ResponseWriter, r *http.Request, url string) {
-	if !config.ServerConfig.IsTest && !tb.IsInWhiteList(r) { // 正式环境下对ip做拦截
 		handler.DefaultHandler(w, r)
-		return
 	}
-	if strings.HasPrefix(url, "download") { // 下载文件
-		wrapper(handler.DownloadFile, w, r, true, true)
-		return
-	}
-	if strings.HasPrefix(url, "static") { // 静态文件服务
-		handler.StatisHandler(w, r)
-		return
-	}
-	handler.DefaultHandler(w, r)
 }
 
 // 在handler外包装一层, 控制是否进行ip拦截和请求详情记录

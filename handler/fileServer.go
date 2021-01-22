@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strings"
@@ -16,9 +17,26 @@ import (
 	"github.com/astaxie/beego/logs"
 )
 
+// 静态文件存储服务,可用于在服务器之间通过命令行传送文件，收到的文件在存储时会隐藏文件名等信息
+func StaticHandler(w http.ResponseWriter, r *http.Request) {
+	logs.Debug("static url=%v", r.URL)
+	url := strings.Trim(fmt.Sprintf("%s", r.URL.Path), "/")
+	if url == "static/upload" {
+		staticUploadHandler(w, r)
+	} else if strings.HasPrefix(url, "static/download/") {
+		staticDownloadHandler(w, r)
+	} else if strings.HasPrefix(url, "static/preview/") {
+		staticPreViewHandler(w, r)
+	} else {
+		logs.Warn("skip unexpect static request: url=%s", url)
+		w.WriteHeader(http.StatusForbidden)
+	}
+	return
+}
+
 // 接受一个post请求，将主体中的文件保存下来，返回一个下载链接,每次仅支持上传单个文件
-// Example：curl -F 'file=@default.conf' http://localhost:80/upload
-func UploadFile(w http.ResponseWriter, r *http.Request) {
+// Example：curl -F 'file=@default.conf' http://localhost:80/static/upload
+func staticUploadHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		logs.Warn("UploadFile() receive bad request: %v", r)
 		fmt.Fprint(w, "demo: curl -F 'file=@default.conf' http://localhost:80/upload")
@@ -66,7 +84,7 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 		// 保存文件到本地，名字名字为随机，长度为8
 		var cur *os.File
 		randName := tb.GetRandomString(8)
-		filePath := fmt.Sprintf(config.ServerConfig.SourcePathTp, randName)
+		filePath := fmt.Sprintf("%s%s.tmp", config.ServerConfig.StaticPath, randName)
 		cur, err = os.Create(filePath)
 		if err != nil {
 			logs.Error("create file fail: %v", err)
@@ -82,19 +100,20 @@ func UploadFile(w http.ResponseWriter, r *http.Request) {
 		err = model.InsertUploadRecord(header.Filename, randName, size)
 		if err != nil {
 			logs.Error("save upload file record fail: err=%v", err)
+			break
 		}
-		downloadUrl := fmt.Sprintf(config.ServerConfig.DownloadUrlTp, randName)
-		fmt.Fprintf(w, `\nSave file success: size=%d name=%s \n
-		browser_download_url:  %s \n
-		command_download_url:  wget --no-check-certificate --content-disposition %s \n
-		`, size, header.Filename, downloadUrl, downloadUrl)
+		downloadUrl := fmt.Sprintf("%s/static/download/%s", config.ServerConfig.ServerURL, randName)
+		previewUrl := fmt.Sprintf("%s/static/preview/%s.tmp", config.ServerConfig.ServerURL, randName)
+		fmt.Fprintf(w,
+			"\n Save file success: size=%d name=%s\n browser_download_url:  %s\n browser_preview_url: %s\n command_download_url:  wget --no-check-certificate --content-disposition %s \n",
+			size, header.Filename, downloadUrl, previewUrl, downloadUrl)
 	}
 	return
 }
 
-// 返回文件供下载
+// 以弹窗下载方式返回staticUploadHandler上传的文件
 // Example: wget --no-check-certificate http://localhost:80/download/abcdefgddd
-func DownloadFile(w http.ResponseWriter, r *http.Request) {
+func staticDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -102,13 +121,13 @@ func DownloadFile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	url := strings.Trim(fmt.Sprint(r.URL), "/") // 取件码必须正好为10个小写字母
-	if !regexp.MustCompile("^download/[a-z]{8}$").MatchString(url) {
+	if !regexp.MustCompile("^static/download/[a-z]{8}$").MatchString(url) {
 		w.WriteHeader(http.StatusBadRequest)
 		logs.Warn("unexpect url: %s", r.URL)
 		return
 	}
-	code := url[9:] // 取件码
-	filePath := fmt.Sprintf(config.ServerConfig.SourcePathTp, code)
+	code := url[16:] // 取件码
+	filePath := fmt.Sprintf("%s%s.tmp", config.ServerConfig.StaticPath, code)
 	if !tb.CheckFileExist(filePath) {
 		logs.Info("file not exist: path=%s", filePath)
 		fmt.Fprintf(w, "file not exist")
@@ -131,46 +150,31 @@ func DownloadFile(w http.ResponseWriter, r *http.Request) {
 	logs.Info("Server file success: %+v", record)
 }
 
-// 返回图片等资源
-func StatisHandler(w http.ResponseWriter, r *http.Request) {
+// 以预览方式返回StaticPath目录下的图片等资源
+// url format: /static/preview/${fileName}
+func staticPreViewHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		logs.Warn("DownloadFile reeceive a bad request: %v", r)
 		return
 	}
-	url := strings.Trim(fmt.Sprint(r.URL), "/")
-	if !regexp.MustCompile("^static/\\w{2,40}\\.\\w{2,5}$").MatchString(url) {
-		w.WriteHeader(http.StatusBadRequest)
-		logs.Warn("unexpect url: %s", r.URL)
-		return
-	}
-	fileName := strings.TrimPrefix(url, "static/")
-	filePath := fmt.Sprintf(config.ServerConfig.StaticPathTP, fileName)
+	uri := strings.Trim(fmt.Sprint(r.URL), "/")
+	uri, _ = url.QueryUnescape(uri)
+	fileName := strings.TrimPrefix(uri, "static/preview/")
+	filePath := config.ServerConfig.StaticPath + fileName
 	logs.Info("get static path: %s", filePath)
-	canFind := tb.CheckFileExist(filePath)
-
-	if !canFind { // 目标找不到尝试返回同目录下的default.jpg
-		logs.Info("files not exist: %s", filePath)
-		filePath = fmt.Sprintf(config.ServerConfig.StaticPathTP, "default.jpg")
-		if !tb.CheckFileExist(filePath) {
-			w.WriteHeader(http.StatusInternalServerError)
-			logs.Error("default.jpg not found: err=%v", err)
-			return
-		}
-	}
-	file, err := os.Open(filePath)
+	fileInfo, err := os.Stat(filePath)
 	if err != nil {
-		logs.Error("open file fail: %v", err)
-		w.WriteHeader(http.StatusBadRequest)
+		logs.Info("stat file fail: error=%v filePath=%s", err, filePath)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	size, err := io.Copy(w, file)
-	if err != nil {
-		logs.Error("return statis fail: err=%e", err)
-		w.WriteHeader(http.StatusBadRequest)
+	if fileInfo.IsDir() {
+		logs.Warn("filePath is a floder: path=%s", filePath)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	logs.Info("server statis file: size=%d  name=%s", size, fileName)
+	http.ServeFile(w, r, filePath)
 	return
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/xml"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"github.com/astaxie/beego/logs"
 )
@@ -16,13 +17,13 @@ type mailConfig struct {
 	MailTo   string `xml:"mail_to"`   // 接收邮件的地址
 }
 
+// 备注：目录路径配置,约定目录路径以/结尾
 type serverConfig struct {
 	AuthorityKey  string `xml:"authority_key"`   // 将ip加入到白名单的路由地址
 	IsTest        bool   `xml:"is_test"`         // 是否测试环境
-	DownloadUrlTp string `xml:"download_url"`    // 请求下载文件的url模板
-	SourcePathTp  string `xml:"source_path"`     // 文件上传和下载的文件路径模板
-	StaticPathTP  string `xml:"statis_path"`     // 存储静态文件的位置
-	CloneBlogPath string `xml:"clone_blog_path"` // 克隆网站存储的位置
+	ServerURL     string `xml:"serverUrl"`       // 访问本服务的url,结尾没斜杠
+	StaticPath    string `xml:"statis_path"`     // 存储静态文件的路径
+	CloneBlogPath string `xml:"clone_blog_path"` // 克隆网站存储的文件夹路径
 	LogPath       string `xml:"log_path"`        // 日志存储的位置
 	BossPath      string `xml:"boss_path"`       // 管理后台前端构建文件路径
 }
@@ -50,6 +51,12 @@ func init() {
 	xml.Unmarshal(b, &MailConfig)
 	xml.Unmarshal(b, &ServerConfig)
 	xml.Unmarshal(b, &DataBaseConfig)
+
+	// 一些检查和修正
+	ServerConfig.StaticPath = strings.TrimRight(ServerConfig.StaticPath, "/") + "/"
+	ServerConfig.CloneBlogPath = strings.TrimRight(ServerConfig.CloneBlogPath, "/") + "/"
+	ServerConfig.BossPath = strings.TrimRight(ServerConfig.BossPath, "/") + "/"
+	ServerConfig.ServerURL = strings.TrimRight(ServerConfig.ServerURL, "/")
 
 	logs.Info("MailConfig: %+v", MailConfig)
 	logs.Info("ServerConfig: %+v", ServerConfig)
