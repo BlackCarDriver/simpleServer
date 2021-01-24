@@ -198,7 +198,7 @@ func callDriverGetChatHistroy(w http.ResponseWriter, r *http.Request) {
 
 // Boss页面
 func callDriverBossHtml(w http.ResponseWriter, r *http.Request) {
-	if !config.ServerConfig.IsTest && !tb.IsInWhiteList(r) {
+	if !config.ServerConfig.IsTest && !IpMonitor.IsInWhiteList(r) {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
@@ -207,7 +207,7 @@ func callDriverBossHtml(w http.ResponseWriter, r *http.Request) {
 
 // Boss回复消息
 func callDriverBossReply(w http.ResponseWriter, r *http.Request) {
-	if !config.ServerConfig.IsTest && !tb.IsInWhiteList(r) {
+	if !config.ServerConfig.IsTest && !IpMonitor.IsInWhiteList(r) {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
@@ -252,7 +252,7 @@ func callDriverBossReply(w http.ResponseWriter, r *http.Request) {
 
 // Boss查看消息
 func callDriverGetAllChat(w http.ResponseWriter, r *http.Request) {
-	if !config.ServerConfig.IsTest && !tb.IsInWhiteList(r) {
+	if !config.ServerConfig.IsTest && !IpMonitor.IsInWhiteList(r) {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
@@ -301,7 +301,7 @@ func callDriverGetAllChat(w http.ResponseWriter, r *http.Request) {
 
 // 其他相关控制
 func callDriverSetMail(w http.ResponseWriter, r *http.Request) {
-	if !config.ServerConfig.IsTest && !tb.IsInWhiteList(r) {
+	if !config.ServerConfig.IsTest && !IpMonitor.IsInWhiteList(r) {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}

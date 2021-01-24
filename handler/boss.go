@@ -5,6 +5,7 @@ import (
 	"io"
 	"io/ioutil"
 	"mime/multipart"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -30,8 +31,8 @@ func BossFontEndHandler(w http.ResponseWriter, r *http.Request) {
 
 // boss管理后台的请求全部经过这里
 func BossAPIHandler(w http.ResponseWriter, r *http.Request) {
-	logs.Debug("boss url=%v", r.URL)
 	url := strings.Trim(fmt.Sprintf("%s", r.URL.Path), "/")
+	logs.Debug("boss url=%v", url)
 	switch url {
 	case "bsapi/msg/reqDetail":
 		requestDetailHandler(w, r)
@@ -41,6 +42,10 @@ func BossAPIHandler(w http.ResponseWriter, r *http.Request) {
 		netDishFileOpeHandler(w, r)
 	case "bsapi/tool/netdish/upload":
 		netDishFileUploadHandler(w, r)
+	case "bsapi/manage/ipWhiteList/list":
+		IPWhitelistHandler(w, r)
+	case "bsapi/manage/ipWhiteList/ope":
+		IPWhitelistOpeHandler(w, r)
 	default:
 		DefaultHandler(w, r)
 	}
@@ -52,7 +57,7 @@ type respStruct struct {
 	PayLoad interface{} `json:"payLoad"`
 }
 
-// 查看后端收到请求的详细信息
+// 服务端工具-请求详情：查看后端收到请求的详细信息
 func requestDetailHandler(w http.ResponseWriter, r *http.Request) {
 	type payload struct {
 		Key   string `json:"key"`
@@ -61,6 +66,7 @@ func requestDetailHandler(w http.ResponseWriter, r *http.Request) {
 	var res []payload
 	tmpIp, tmpPort := toolbox.GetIpAndPort(r)
 	res = append(res, payload{Key: "IP", Value: tmpIp})
+	res = append(res, payload{Key: "IpTag", Value: IpMonitor.QueryIpTag(r)})
 	res = append(res, payload{Key: "Port", Value: tmpPort})
 	res = append(res, payload{Key: "Host", Value: r.Host})
 	res = append(res, payload{Key: "Method", Value: r.Method})
@@ -75,7 +81,7 @@ func requestDetailHandler(w http.ResponseWriter, r *http.Request) {
 	responseJson(&w, resp)
 }
 
-// 查看个人网盘保存的文件列表
+//  服务端工具-个人网盘：获取列表
 func netDishListFilesHandler(w http.ResponseWriter, r *http.Request) {
 	var resp respStruct
 	var err error
@@ -111,7 +117,7 @@ func netDishListFilesHandler(w http.ResponseWriter, r *http.Request) {
 	responseJson(&w, resp)
 }
 
-// 个人网盘-文件下载,文件删除,文件预览
+// 服务端工具-个人网盘-文件下载：文件删除/文件预览
 func netDishFileOpeHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		OpeType  string `json:"opeType"`
@@ -157,7 +163,7 @@ func netDishFileOpeHandler(w http.ResponseWriter, r *http.Request) {
 	responseJson(&w, resp)
 }
 
-// 个人网盘-文件上传
+// 服务端工具-个人网盘：文件上传
 func netDishFileUploadHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var resp respStruct
@@ -210,4 +216,67 @@ func netDishFileUploadHandler(w http.ResponseWriter, r *http.Request) {
 		break
 	}
 	return
+}
+
+// 服务端配置-IP白名单配置:获取ip标记列表
+func IPWhitelistHandler(w http.ResponseWriter, r *http.Request) {
+	type payLoadStruct struct {
+		Ip    string `json:"ip"`
+		Tag   string `json:"tag"`
+		Times int    `json:"times"`
+	}
+	payload := make([]payLoadStruct, 0)
+	var resp respStruct
+	for ip, tag := range IpMonitor.GetIpTag() {
+		payload = append(payload, payLoadStruct{
+			Ip:    ip,
+			Tag:   tag,
+			Times: IpMonitor.GetIpVisitTImes(ip),
+		})
+	}
+	resp.PayLoad = payload
+	responseJson(&w, resp)
+}
+
+// 服务端配置-IP白名单配置：新增修改标记\删除标记
+func IPWhitelistOpeHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		OpeType string `json:"opeType"`
+		IP      string `json:"ip"`
+		Tag     string `json:"tag"`
+	}
+	var err error
+	var resp respStruct
+
+	for loop := true; loop; loop = false {
+		err = toolbox.MustQueryFromRequest(r, &req)
+		if err != nil {
+			logs.Warn("parse request fail: error=%+v", err)
+			break
+		}
+		if req.OpeType != "update" && req.OpeType != "delete" {
+			err = fmt.Errorf("unexpect opetype: %q", req.OpeType)
+			break
+		}
+		if net.ParseIP(req.IP) == nil {
+			err = fmt.Errorf("ip format not right: ip=%s", req.IP)
+			break
+		}
+		if req.Tag == "" {
+			err = fmt.Errorf("tag is null")
+			break
+		}
+		if req.OpeType == "update" { // 新增或修改标签
+			IpMonitor.UpdateIpTag(req.IP, req.Tag)
+		} else {
+			IpMonitor.DeleteIpTag(req.IP)
+		}
+		logs.Info("ip whitelist updated: req=%+v", req)
+	}
+	if err != nil {
+		logs.Warn("handle ipwhitelist ope failed: error=%v req=%+v", err, req)
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}
+	responseJson(&w, resp)
 }

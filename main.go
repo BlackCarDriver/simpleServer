@@ -3,13 +3,12 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 
 	"./config"
 	"./handler"
-	tb "./toolbox"
+	"./model"
 	"github.com/astaxie/beego/logs"
 )
 
@@ -32,8 +31,16 @@ func initMain() {
 }
 
 func test() {
-	res, err := url.QueryUnescape("/static/preview/%E5%8A%A8%E7%94%BB%E7%89%87.mp4")
-	logs.Debug("res=%q  error=%v", res, err)
+	data := make(map[string]string)
+	data["123"] = "123"
+	data["4456"] = "sdfdsfdsf"
+	err := model.UpdateUtilData("test", data)
+	logs.Debug("update result: error=%v", err)
+	newData := make(map[string]string)
+	err = model.GetUtilData("test", &newData)
+	logs.Debug("get result: error=%v", err)
+	logs.Debug("newData=%+v", newData)
+
 	os.Exit(0)
 }
 
@@ -42,11 +49,11 @@ func main() {
 	initMain()
 	muxer := http.NewServeMux()
 	muxer.Handle("/", MakeHandler(defaultHandler))
-	muxer.Handle("/blog/", blogHandler)                                  // 空壳博客
-	muxer.Handle("/boss/", MakeHandler(handler.BossFontEndHandler))      // 管理后台
-	muxer.Handle("/bsapi/", MakeHandler(handler.BossAPIHandler))         // 管理后台api
-	muxer.Handle("/callDriver/", MakeHandler(handler.CallDriverHandler)) // callDriver应用
-	muxer.Handle("/static/", MakeHandler(handler.StaticHandler))         // 静态文件存储服务
+	muxer.Handle("/blog/", blogHandler)                                    // 空壳博客
+	muxer.Handle("/boss/", MakeHandler2(handler.BossFontEndHandler, true)) // 管理后台
+	muxer.Handle("/bsapi/", MakeHandler2(handler.BossAPIHandler, true))    // 管理后台api
+	muxer.Handle("/callDriver/", MakeHandler(handler.CallDriverHandler))   // callDriver应用
+	muxer.Handle("/static/", MakeHandler2(handler.StaticHandler, true))    // 静态文件存储服务
 	muxer.Handle("/manage/", MakeHandler(handler.ManageHandler))
 
 	err := http.ListenAndServe(":80", muxer)
@@ -57,7 +64,7 @@ func main() {
 
 // 处理其他请求
 func defaultHandler(w http.ResponseWriter, r *http.Request) {
-	url := strings.Trim(fmt.Sprint(r.URL), "/")
+	url := strings.Trim(fmt.Sprint(r.URL.Path), "/")
 	if url == "" { // 空路由转跳到空壳博客
 		http.Redirect(w, r, "/blog", http.StatusPermanentRedirect)
 		return
@@ -80,7 +87,7 @@ func defaultHandler(w http.ResponseWriter, r *http.Request) {
 // 在handler外包装一层, 控制是否进行ip拦截和请求详情记录
 func wrapper(defHandler http.HandlerFunc, w http.ResponseWriter, r *http.Request, auth bool, record bool) {
 	if auth && !config.ServerConfig.IsTest { // 正式环境下校检特定请求的ip
-		if !tb.IsInWhiteList(r) {
+		if !handler.IpMonitor.IsInWhiteList(r) {
 			handler.DefaultHandler(w, r)
 			return
 		}
@@ -94,11 +101,13 @@ func wrapper(defHandler http.HandlerFunc, w http.ResponseWriter, r *http.Request
 // ========= Handler Maker ===========
 type myHandler struct {
 	handler http.HandlerFunc
+	auth    bool // 是否对ip进行拦截
 }
 
 func (h myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.handler == nil {
-		logs.Emergency("calling a empty a handler")
+	if h.auth && !config.ServerConfig.IsTest && !handler.IpMonitor.IsInWhiteList(r) {
+		w.WriteHeader(http.StatusNonAuthoritativeInfo)
+		fmt.Fprint(w, "sorry, Permission denied...")
 		return
 	}
 	h.handler(w, r)
@@ -106,6 +115,12 @@ func (h myHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func MakeHandler(fv http.HandlerFunc) myHandler {
 	return myHandler{
 		handler: fv,
+	}
+}
+func MakeHandler2(fv http.HandlerFunc, auth bool) myHandler {
+	return myHandler{
+		handler: fv,
+		auth:    auth,
 	}
 }
 

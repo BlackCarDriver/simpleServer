@@ -15,7 +15,7 @@ import (
 
 // 管理相关路由全部经过这里
 func ManageHandler(w http.ResponseWriter, r *http.Request) {
-	if !config.ServerConfig.IsTest && !tb.IsInWhiteList(r) {
+	if !config.ServerConfig.IsTest && !IpMonitor.IsInWhiteList(r) {
 		logs.Warn("block a visit for manage")
 		RecordRequest(r, "🚯")
 		w.WriteHeader(http.StatusNotAcceptable)
@@ -87,7 +87,7 @@ func uploadFile(w http.ResponseWriter, r *http.Request) {
 
 // 清除ip访问记录
 func ClearIpHistory(w http.ResponseWriter, r *http.Request) {
-	res := tb.ClearIpHistoryN(10)
+	res := IpMonitor.ClearipHistoryN(10)
 	logs.Info("clear ip visit history result: numbers=%d", res)
 	fmt.Fprintf(w, "clear numbers=%d", res)
 }
@@ -110,10 +110,10 @@ func AddIPBlackList(w http.ResponseWriter, r *http.Request) {
 		logs.Warning(err)
 		goto end
 	}
-	if reqForm.IsBlack == "on" {
-		tb.AddBlackList(reqForm.IP)
+	if reqForm.IsBlack == "on" { // 移除ip标记
+		IpMonitor.DeleteIpTag(reqForm.IP)
 	} else {
-		tb.AddWhiteList(reqForm.IP)
+		IpMonitor.UpdateIpTag(reqForm.IP, "Guest")
 	}
 	logs.Info("add IP to blackList success: IP=%s  isBlack=%v", reqForm.IP, reqForm.IsBlack)
 end:
@@ -122,5 +122,5 @@ end:
 
 // 查看黑白名单情况
 func GetBlackWhiteList(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "%s", tb.GetBlackWhiteList())
+	fmt.Fprintf(w, "%s", IpMonitor.GetBlackWhiteList())
 }

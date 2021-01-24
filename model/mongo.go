@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -19,7 +20,81 @@ func commonBlocker() error {
 	return nil
 }
 
-// =============================================
+// ================ IpMonitor =======================
+
+// 设置或更新util集合的数据项
+func UpdateUtilData(key string, value interface{}) error {
+	var err error
+	var jsonData []byte
+	if err = commonBlocker(); err != nil {
+		logs.Error("%v", err)
+		return err
+	}
+	for loop := true; loop; loop = false {
+		collection := database.C(CollectUtil)
+		if collection == nil {
+			err = fmt.Errorf("connect to collection fail: collection=%s", CollectUtil)
+			break
+		}
+		jsonData, err = json.Marshal(value)
+		if err != nil {
+			break
+		}
+		var newValue = UtilStruct{
+			Key:       key,
+			Value:     string(jsonData),
+			Timestamp: time.Now().Unix(),
+		}
+		_, err = collection.RemoveAll(bson.M{"key": key})
+		if err != nil {
+			logs.Error("remove oldData failed: error=%v key=%s", err, key)
+			break
+		}
+		err = collection.Insert(newValue)
+		if err != nil {
+			logs.Error("insert failed: err=%v key=%s", err, key)
+			break
+		}
+	}
+	if err != nil {
+		logs.Error("update util data failed: error=%v key=%s value=%+v", err, key, value)
+	} else {
+		logs.Info("update util data success, key=%s", key)
+	}
+	return nil
+}
+
+// 根据key获取util集合的某项数据, value必须为可被修改的类型,如结构体的指针或map
+func GetUtilData(key string, value interface{}) error {
+	var err error
+	if err = commonBlocker(); err != nil {
+		logs.Error("%v", err)
+		return err
+	}
+	for loop := true; loop; loop = false {
+		collection := database.C(CollectUtil)
+		if collection == nil {
+			err = fmt.Errorf("connect to collection fail: collection=%s", CollectUtil)
+			break
+		}
+		query := collection.Find(bson.M{"key": key})
+		if query == nil {
+			logs.Error("find result is null: key=%s", key)
+			return fmt.Errorf("no record found in database")
+		}
+		var result UtilStruct
+		err = query.One(&result)
+		if err != nil {
+			logs.Error("query result failed: error=%v", err)
+			return err
+		}
+		err = json.Unmarshal([]byte(result.Value), value)
+		logs.Debug("key=%s latestValue=%+v", key, value)
+	}
+	return nil
+}
+
+// ================ StaticHandler ====================
 
 // 记录文件上传信息
 func InsertUploadRecord(fileName string, code string, size int64) error {

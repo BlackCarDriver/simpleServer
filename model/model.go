@@ -10,8 +10,9 @@ import (
 
 // mongoDB 相关常量
 const (
-	CollectUploadFile    = "upload_file"
+	CollectUploadFile    = "upload_file"     // 文件暂存服务记录的文件信息
 	CollectCallDriverMsg = "call_driver_msg" //callDriver应用的聊条记录
+	CollectUtil          = "util"            // 杂项信息,约定使用UtilStruct作为数据项结构
 )
 
 var (
@@ -46,6 +47,13 @@ func init() {
 }
 
 // ============== mongoDB 结构体 ========================
+
+// util集合的数据统一使用这个结构体
+type UtilStruct struct {
+	Key       string `bson:"key"`
+	Value     string `bson:"value"`
+	Timestamp int64  `bson:"timestamp"`
+}
 
 // 上传文件保存后对应的文件名和下载码
 type FileUpload struct {

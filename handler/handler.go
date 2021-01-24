@@ -7,13 +7,30 @@ import (
 	"time"
 
 	"../config"
+	"../model"
 	tb "../toolbox"
 
 	"github.com/astaxie/beego/logs"
 )
 
+var IpMonitor tb.IPMonitor
+
 func init() {
-	// initCloner()
+	IpMonitor = tb.MakeIpMonitor()
+	// 从数据库读取已有的ip标记数据
+	oldTags := make(map[string]string)
+	err := model.GetUtilData("ipTag", &oldTags)
+	if err != nil {
+		logs.Error("init ipTag failed: error=%v", err)
+	}
+	IpMonitor.UpdateAllIpTag(oldTags)
+	// 开启一个协程，每隔一段时间备份ip标记到mongo
+	go func() {
+		for _ = range time.NewTicker(10 * time.Minute).C {
+			err := model.UpdateUtilData("ipTag", IpMonitor.GetIpTag())
+			logs.Debug("update ipTag result: error=%v", err)
+		}
+	}()
 }
 
 // 查看并返回请求详情
@@ -48,7 +65,7 @@ func GetRequestDetail(w http.ResponseWriter, r *http.Request) {
 
 // 获取访问日志
 func GetReqLogs(w http.ResponseWriter, r *http.Request) {
-	visitStr := tb.GetStatic()
+	visitStr := IpMonitor.GetStatic()
 	logStr, err := tb.ParseFile(config.ServerConfig.LogPath)
 	if err != nil {
 		logs.Error("read logs file fail: %v", err)
@@ -57,11 +74,17 @@ func GetReqLogs(w http.ResponseWriter, r *http.Request) {
 }
 
 // 将ip地址加入到白名单
+// 可以在url中增加tag参数来指定ip的标记
 func AddIpToWhiteList(w http.ResponseWriter, r *http.Request) {
 	ip, _ := tb.GetIpAndPort(r)
-	tb.AddWhiteList(ip)
+	tag := "Guest"
+	r.ParseForm()
+	if r.Form.Get("tag") != "" {
+		tag = r.Form.Get("tag")
+	}
+	IpMonitor.UpdateIpTag(ip, tag)
 	RecordRequest(r, "✅")
-	fmt.Fprint(w, "👌 OK!")
+	fmt.Fprintf(w, "IP=%s \n Tag=%s \n ✅", ip, tag)
 }
 
 // 处理没有找到正确路由的请求
@@ -76,10 +99,9 @@ func DefaultHandler(w http.ResponseWriter, r *http.Request) {
 // 记录访问日志
 func RecordRequest(req *http.Request, preFix string) {
 	ip, port := tb.GetIpAndPort(req)
-	visitTimes := tb.GetAndAddIpVisitTimes(ip)
-	log := fmt.Sprintf("%s%d  %d  %s  %s  %s  %s  %s  %s",
+	visitTimes := IpMonitor.GetAndAddIpVisitTimes(ip)
+	log := fmt.Sprintf("%s  %d  %s  %s  %s  %s  %s  %s",
 		preFix,
-		tb.RequestCounter,
 		visitTimes,
 		ip,
 		port,
