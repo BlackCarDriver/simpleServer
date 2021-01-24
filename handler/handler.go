@@ -9,13 +9,16 @@ import (
 	"../config"
 	"../model"
 	tb "../toolbox"
+	sm "./s2sMaster"
 
 	"github.com/astaxie/beego/logs"
 )
 
-var IpMonitor tb.IPMonitor
+var IpMonitor *tb.IPMonitor
+var s2sMaster *sm.ServiceMaster
 
 func init() {
+	// 初始化ip监控
 	IpMonitor = tb.MakeIpMonitor()
 	// 从数据库读取已有的ip标记数据
 	oldTags := make(map[string]string)
@@ -31,6 +34,35 @@ func init() {
 			logs.Debug("update ipTag result: error=%v", err)
 		}
 	}()
+	// 初始化s2s
+	s2sMaster = sm.NewServiceMaster("secret")
+}
+
+// 注册一个RPC服务
+func RegisterServiceHandler(w http.ResponseWriter, r *http.Request) {
+	var req sm.RegisterPackage
+	var err error
+	var resp struct {
+		Status int    `json:"status"`
+		Msg    string `json:"msg"`
+	}
+	for loop := true; loop; loop = false {
+		err = tb.MustQueryFromRequest(r, &req)
+		if err != nil {
+			break
+		}
+		err = s2sMaster.Register(req)
+		if err != nil {
+			break
+		}
+		logs.Info("register service success: req=%+v", req)
+	}
+	if err != nil {
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}
+	resp.Msg = "OK"
+	responseJson(&w, resp)
 }
 
 // 查看并返回请求详情

@@ -14,8 +14,8 @@ type IPMonitor struct {
 	ipHistory map[string]int    // ip访问次数
 }
 
-func MakeIpMonitor() IPMonitor {
-	return IPMonitor{
+func MakeIpMonitor() *IPMonitor {
+	return &IPMonitor{
 		ipTag:     make(map[string]string),
 		ipHistory: make(map[string]int),
 	}

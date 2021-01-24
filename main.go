@@ -73,6 +73,8 @@ func defaultHandler(w http.ResponseWriter, r *http.Request) {
 	switch url {
 	case "favicon.ico": // 返回浏览器标签显示的图标
 		http.ServeFile(w, r, "./source/favicon.ico")
+	case "registerS2S": // 注册RPC服务
+		handler.RegisterServiceHandler(w, r)
 	case "reqMsg": // 查看请求的详细信息
 		wrapper(handler.GetRequestDetail, w, r, true, true)
 	case "reqLog": // 查看请求日志
