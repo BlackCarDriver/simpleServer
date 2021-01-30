@@ -8,7 +8,7 @@ import (
 
 	"./config"
 	"./handler"
-	"./model"
+	"./service"
 	"github.com/astaxie/beego/logs"
 )
 
@@ -31,21 +31,13 @@ func initMain() {
 }
 
 func test() {
-	data := make(map[string]string)
-	data["123"] = "123"
-	data["4456"] = "sdfdsfdsf"
-	err := model.UpdateUtilData("test", data)
-	logs.Debug("update result: error=%v", err)
-	newData := make(map[string]string)
-	err = model.GetUtilData("test", &newData)
-	logs.Debug("get result: error=%v", err)
-	logs.Debug("newData=%+v", newData)
+	service.NewCodeRunnerTest()
 
 	os.Exit(0)
 }
 
 func main() {
-	// test()
+	test()
 	initMain()
 	muxer := http.NewServeMux()
 	muxer.Handle("/", MakeHandler(defaultHandler))
