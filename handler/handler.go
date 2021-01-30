@@ -9,60 +9,33 @@ import (
 	"../config"
 	"../model"
 	tb "../toolbox"
-	sm "./s2sMaster"
 
 	"github.com/astaxie/beego/logs"
 )
 
 var IpMonitor *tb.IPMonitor
-var s2sMaster *sm.ServiceMaster
 
 func init() {
 	// 初始化ip监控
 	IpMonitor = tb.MakeIpMonitor()
-	// 从数据库读取已有的ip标记数据
-	oldTags := make(map[string]string)
-	err := model.GetUtilData("ipTag", &oldTags)
-	if err != nil {
-		logs.Error("init ipTag failed: error=%v", err)
-	}
-	IpMonitor.UpdateAllIpTag(oldTags)
-	// 开启一个协程，每隔一段时间备份ip标记到mongo
-	go func() {
-		for _ = range time.NewTicker(10 * time.Minute).C {
-			err := model.UpdateUtilData("ipTag", IpMonitor.GetIpTag())
-			logs.Debug("update ipTag result: error=%v", err)
-		}
-	}()
-	// 初始化s2s
-	s2sMaster = sm.NewServiceMaster("secret")
-}
 
-// 注册一个RPC服务
-func RegisterServiceHandler(w http.ResponseWriter, r *http.Request) {
-	var req sm.RegisterPackage
-	var err error
-	var resp struct {
-		Status int    `json:"status"`
-		Msg    string `json:"msg"`
-	}
-	for loop := true; loop; loop = false {
-		err = tb.MustQueryFromRequest(r, &req)
+	// 从mongo中读取旧的标记记录，同时开启协程来定期持久化ip标记数据
+	if !config.ServerConfig.IsTest {
+		oldTags := make(map[string]string)
+		err := model.GetUtilData("ipTag", &oldTags)
 		if err != nil {
-			break
+			logs.Error("init ipTag failed: error=%v", err)
 		}
-		err = s2sMaster.Register(req)
-		if err != nil {
-			break
-		}
-		logs.Info("register service success: req=%+v", req)
+		IpMonitor.UpdateAllIpTag(oldTags)
+		go func() {
+			for _ = range time.NewTicker(10 * time.Minute).C {
+				err := model.UpdateUtilData("ipTag", IpMonitor.GetIpTag())
+				logs.Debug("update ipTag result: error=%v", err)
+			}
+		}()
 	}
-	if err != nil {
-		resp.Status = -1
-		resp.Msg = fmt.Sprint(err)
-	}
-	resp.Msg = "OK"
-	responseJson(&w, resp)
+
+	logs.Info("handler init success...")
 }
 
 // 查看并返回请求详情
@@ -120,13 +93,13 @@ func AddIpToWhiteList(w http.ResponseWriter, r *http.Request) {
 }
 
 // 处理没有找到正确路由的请求
-func DefaultHandler(w http.ResponseWriter, r *http.Request) {
+func NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	RecordRequest(r, "🚫")
 	w.WriteHeader(http.StatusNotFound)
 	http.ServeFile(w, r, "./source/hello.html")
 }
 
-// =================================================================
+// ====================== commom =================================
 
 // 记录访问日志
 func RecordRequest(req *http.Request, preFix string) {
@@ -152,6 +125,8 @@ func responseJson(w *http.ResponseWriter, payload interface{}) {
 	bytes, err := json.Marshal(payload)
 	if err != nil {
 		logs.Error("json marshal error: payload=%+v error=%v", payload, err)
+		(*w).WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(*w, "sorry, something bad happen...")
 		return
 	}
 	fmt.Fprintf(*w, "%s", bytes)

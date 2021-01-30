@@ -1,4 +1,4 @@
-package s2sMaster
+package rpc
 
 import (
 	"crypto/md5"
@@ -108,8 +108,8 @@ type RegisterPackage struct {
 // 服务管理员
 type ServiceMaster struct {
 	mux      *sync.Mutex
-	secret   string
-	counter  map[string]int //服务访问次数计数器
+	secret   string         // 用于防治恶意注册服务
+	counter  map[string]int // 服务访问次数计数器
 	services map[string]*S2sServices
 }
 

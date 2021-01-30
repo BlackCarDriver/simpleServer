@@ -6,18 +6,45 @@ import (
 	"fmt"
 	"time"
 
+	"../config"
 	tb "../toolbox"
 	"github.com/astaxie/beego/logs"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
-// 统一拦截mongo数据查询请求
-func commonBlocker() error {
-	if !isInitMongo {
-		return errors.New("mongo is not init")
+// 统一检查mongo数据查询的请求
+func mongoBlocker() error {
+	if !config.DataBaseConfig.UseMongo {
+		return errors.New("mongo are not going to used, pleace check the config")
+	}
+	if !isMongoInit { // 延迟初始化
+		deleyInitMongo()
 	}
 	return nil
+}
+
+// 延迟初始化mongo
+// 若已初始化完成,则直接返回，否则加锁，进行初始化
+func deleyInitMongo() {
+	mongoInitMux.Lock()
+	defer mongoInitMux.Unlock()
+	if isMongoInit {
+		return
+	}
+	var err error
+	session, err = mgo.Dial(config.DataBaseConfig.MongoURL)
+	if err != nil {
+		logs.Error("Dial mongoDB fial: url=%s  err=%v", config.DataBaseConfig.MongoURL, err)
+		panic(err)
+	}
+	database = session.DB(config.DataBaseConfig.MongodbName)
+	if database == nil {
+		logs.Error("Connect to database fail: dbName=%s", config.DataBaseConfig.MongodbName)
+	}
+	isMongoInit = true
+	logs.Info("mongoDB delay init success...")
+	return
 }
 
 // ================ IpMonitor =======================
@@ -26,7 +53,7 @@ func commonBlocker() error {
 func UpdateUtilData(key string, value interface{}) error {
 	var err error
 	var jsonData []byte
-	if err = commonBlocker(); err != nil {
+	if err = mongoBlocker(); err != nil {
 		logs.Error("%v", err)
 		return err
 	}
@@ -67,7 +94,7 @@ func UpdateUtilData(key string, value interface{}) error {
 // 根据key获取util集合的某项数据, value必须为可被修改的类型,如结构体的指针或map
 func GetUtilData(key string, value interface{}) error {
 	var err error
-	if err = commonBlocker(); err != nil {
+	if err = mongoBlocker(); err != nil {
 		logs.Error("%v", err)
 		return err
 	}
@@ -99,7 +126,7 @@ func GetUtilData(key string, value interface{}) error {
 // 记录文件上传信息
 func InsertUploadRecord(fileName string, code string, size int64) error {
 	var err error
-	if err = commonBlocker(); err != nil {
+	if err = mongoBlocker(); err != nil {
 		logs.Error("%v", err)
 		return err
 	}
@@ -137,7 +164,7 @@ func GetUploadRecord(code string) (FileUpload, error) {
 	var err error
 	var query *mgo.Query
 
-	if err = commonBlocker(); err != nil {
+	if err = mongoBlocker(); err != nil {
 		logs.Error("%v", err)
 		return record, err
 	}
@@ -159,7 +186,7 @@ func GetUploadRecord(code string) (FileUpload, error) {
 // 保存callDriver应用中收到的来自其他用户的消息
 func InsertCallDriverMessage(from, to, msg, ip string) error {
 	var err error
-	if err = commonBlocker(); err != nil {
+	if err = mongoBlocker(); err != nil {
 		logs.Error("%v", err)
 		return err
 	}
@@ -196,7 +223,7 @@ func InsertCallDriverMessage(from, to, msg, ip string) error {
 // 查询callDriver应用的聊天记录
 func FindCallDriverMessage(nick string, num int) (history []CallDriverChat, err error) {
 	history = make([]CallDriverChat, 0)
-	if err = commonBlocker(); err != nil {
+	if err = mongoBlocker(); err != nil {
 		logs.Error("%v", err)
 		return history, err
 	}
@@ -234,7 +261,7 @@ func FindCallDriverMessage(nick string, num int) (history []CallDriverChat, err 
 // 记录聊天记录已读,status自增1
 func UpdateCallDriverMessage(ids []string) {
 	var err error
-	if err = commonBlocker(); err != nil {
+	if err = mongoBlocker(); err != nil {
 		logs.Error("%v", err)
 		return
 	}
@@ -258,7 +285,7 @@ func UpdateCallDriverMessage(ids []string) {
 // 查询所有聊天记录
 func FindAllCallDriverMessage() (history []CallDriverChat, err error) {
 	history = make([]CallDriverChat, 0)
-	if err = commonBlocker(); err != nil {
+	if err = mongoBlocker(); err != nil {
 		logs.Error("%v", err)
 		return history, err
 	}

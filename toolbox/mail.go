@@ -17,11 +17,11 @@ var (
 )
 
 func initMailSender() {
-	logs.Info("mail sender init...")
 	agentHost = config.MailConfig.MailHost
 	agentPort = config.MailConfig.MailPort
 	agentUser = config.MailConfig.MailUser
 	agentPass = config.MailConfig.MailPass
+	logs.Info("mail init success...")
 }
 
 // 发送邮箱接口

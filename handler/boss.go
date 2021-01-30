@@ -47,7 +47,7 @@ func BossAPIHandler(w http.ResponseWriter, r *http.Request) {
 	case "bsapi/manage/ipWhiteList/ope":
 		IPWhitelistOpeHandler(w, r)
 	default:
-		DefaultHandler(w, r)
+		NotFoundHandler(w, r)
 	}
 }
 

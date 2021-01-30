@@ -35,7 +35,7 @@ func ManageHandler(w http.ResponseWriter, r *http.Request) {
 	case "manage/checklist":
 		GetBlackWhiteList(w, r)
 	default:
-		DefaultHandler(w, r)
+		NotFoundHandler(w, r)
 	}
 }
 

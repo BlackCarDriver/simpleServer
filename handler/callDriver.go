@@ -53,7 +53,7 @@ func CallDriverHandler(w http.ResponseWriter, r *http.Request) {
 	case "callDriver/boss/control":
 		callDriverSetMail(w, r)
 	default:
-		DefaultHandler(w, r)
+		NotFoundHandler(w, r)
 	}
 }
 

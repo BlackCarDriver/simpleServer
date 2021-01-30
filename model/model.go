@@ -2,9 +2,8 @@ package model
 
 import (
 	"errors"
+	"sync"
 
-	"../config"
-	"github.com/astaxie/beego/logs"
 	"gopkg.in/mgo.v2"
 )
 
@@ -21,29 +20,14 @@ var (
 
 //全局对象
 var (
-	session     *mgo.Session  = nil
-	database    *mgo.Database = nil
-	isInitMongo               = false
+	session      *mgo.Session  = nil
+	database     *mgo.Database = nil
+	isMongoInit                = false // mongo是否已初始化完成
+	mongoInitMux *sync.Mutex
 )
 
 func init() {
-	if !config.DataBaseConfig.UseMongo {
-		logs.Warn("skip init databse because config UseMongo=false")
-		return
-	}
-	// 链接mongo
-	var err error
-	session, err = mgo.Dial(config.DataBaseConfig.MongoURL)
-	if err != nil {
-		logs.Error("Dial mongoDB fial: url=%s  err=%v", config.DataBaseConfig.MongoURL, err)
-		panic(err)
-	}
-	database = session.DB(config.DataBaseConfig.MongodbName)
-	if database == nil {
-		logs.Error("Connect to database fail: dbName=%s", config.DataBaseConfig.MongodbName)
-	}
-	isInitMongo = true
-	logs.Info("mongoDB init success...")
+	mongoInitMux = new(sync.Mutex)
 }
 
 // ============== mongoDB 结构体 ========================
