@@ -6,14 +6,23 @@ import (
 	"net/http"
 
 	"../toolbox"
+	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/astaxie/beego/logs"
 )
 
 var s2sMaster *ServiceMaster
 
+var protocolFactory thrift.TProtocolFactory
+var transportFactory thrift.TTransportFactory
+
+const (
+	codeRunnerS2SName = "codeRunner"
+)
+
 func init() {
-	s2sMaster = NewServiceMaster("secret")
-	initCodeRunner()
+	s2sMaster = NewServiceMaster("secret") // TODO:从配置文件读取
+	protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
+	transportFactory = thrift.NewTBufferedTransportFactory(8192)
 	logs.Info("rpc init...")
 }
 

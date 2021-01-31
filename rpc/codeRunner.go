@@ -4,18 +4,11 @@ import (
 	"context"
 	"time"
 
-	"./gen-go/codeRunner"
+	"codeRunner"
+
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/astaxie/beego/logs"
 )
-
-var codeRunnerProtocolFactory thrift.TProtocolFactory
-var codeRunnerTransportFactory thrift.TTransportFactory
-
-func initCodeRunner() {
-	codeRunnerProtocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
-	codeRunnerTransportFactory = thrift.NewTBufferedTransportFactory(8192)
-}
 
 // 返回一个10分钟自动关闭的context
 func GetDefaultContext() (context.Context, context.CancelFunc) {
@@ -25,13 +18,18 @@ func GetDefaultContext() (context.Context, context.CancelFunc) {
 // 创建一个codeRunner服务端
 func NewCodeRunner(ctx context.Context) (client *codeRunner.CodeRunnerClient, err error) {
 	var transport thrift.TTransport
-	var addr = "127.0.0.1:81"
+	var addr string
+	addr, err = s2sMaster.GetUrlByServiceName(codeRunnerS2SName)
+	if err != nil {
+		logs.Error("get service addre failed: err=%s", err)
+		return
+	}
 	transport, err = thrift.NewTSocket(addr)
 	if err != nil {
 		logs.Error("get socket failed: error=%v addr=%s", err, addr)
 		return
 	}
-	transport, err = codeRunnerTransportFactory.GetTransport(transport)
+	transport, err = transportFactory.GetTransport(transport)
 	if err != nil {
 		logs.Error("get transport failed: error=%v", err)
 		return
@@ -53,7 +51,7 @@ func NewCodeRunner(ctx context.Context) (client *codeRunner.CodeRunnerClient, er
 	}()
 	client = codeRunner.NewCodeRunnerClient(
 		thrift.NewTStandardClient(
-			codeRunnerProtocolFactory.GetProtocol(transport),
-			codeRunnerProtocolFactory.GetProtocol(transport)))
+			protocolFactory.GetProtocol(transport),
+			protocolFactory.GetProtocol(transport)))
 	return
 }

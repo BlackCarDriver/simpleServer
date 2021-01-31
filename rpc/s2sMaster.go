@@ -1,13 +1,16 @@
 package rpc
 
 import (
+	"context"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"net/http"
 	"sync"
 	"time"
 
+	"baseService"
+
+	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/astaxie/beego/logs"
 )
 
@@ -27,13 +30,30 @@ type s2sMember struct {
 
 // 测试节点是否正常提供服务
 func (m *s2sMember) Test() bool {
-	resp, err := http.Get(m.URL + "/ping")
+	var transport thrift.TTransport
+	var err error
+	transport, err = thrift.NewTSocket(m.URL)
 	if err != nil {
-		logs.Error("test member fail: error=%v member=%+v", *m)
+		logs.Error("test fail, can not create socket: error=%v url=%s", err, m.URL)
 		return false
 	}
-	if resp.StatusCode != 200 {
-		logs.Warn("test member fail: resp=%+v", resp)
+	transport, err = transportFactory.GetTransport(transport)
+	if err != nil {
+		logs.Error("test fail, can not create transport: error=%v", err)
+		return false
+	}
+	defer transport.Close()
+	if err = transport.Open(); err != nil {
+		logs.Error("test fail, transport can not open: error=%v", err)
+		return false
+	}
+	client := baseService.NewBaseServiceClient(
+		thrift.NewTStandardClient(
+			protocolFactory.GetProtocol(transport),
+			protocolFactory.GetProtocol(transport)))
+	_, err = client.Ping(context.Background())
+	if err != nil {
+		logs.Error("test fail, can not called ping: error=%v", err)
 		return false
 	}
 	return true
@@ -43,10 +63,10 @@ func (m *s2sMember) Test() bool {
 
 // S2sServices代表一个服务
 type S2sServices struct {
-	mux     *sync.Mutex
-	Name    string                // 服务名称
-	counter map[string]int        // 用于统计每个节点提供的服务次数和成功率
-	member  map[string]*s2sMember // url到节点的映射
+	addMemberMux *sync.Mutex
+	Name         string       // 服务名称
+	counter      int          // 请求次数
+	member       []*s2sMember // 节点列表
 }
 
 // 创建一个新服务
@@ -55,17 +75,17 @@ func NewS2sService(name string) *S2sServices {
 		panic("receive empty name when make new s2s services")
 	}
 	return &S2sServices{
-		mux:     new(sync.Mutex),
-		Name:    name,
-		counter: make(map[string]int),
-		member:  make(map[string]*s2sMember),
+		addMemberMux: new(sync.Mutex),
+		Name:         name,
+		counter:      0,
+		member:       make([]*s2sMember, 0),
 	}
 }
 
 // 新增一个成员
 func (s *S2sServices) AddMenber(url, tag string) error {
-	s.mux.Lock()
-	defer s.mux.Unlock()
+	s.addMemberMux.Lock()
+	defer s.addMemberMux.Unlock()
 
 	if url == "" || tag == "" {
 		panic("receive empty url or tag when add new member")
@@ -80,16 +100,24 @@ func (s *S2sServices) AddMenber(url, tag string) error {
 		logs.Warn("add member failed: test not pass")
 		return fmt.Errorf("test not pass")
 	}
-	oldMember, isExist := s.member[url]
+	var oldMember *s2sMember
+	isExist := false
+	index := 0
+	for index := 0; index < len(s.member); index++ {
+		if s.member[index].URL == url {
+			isExist = true
+			break
+		}
+	}
 	if isExist { // 此前注册过该节点
 		if oldMember.Status == statusNormal {
 			logs.Warn("a old normal member already exist: oldmember=%+v", oldMember)
 			return nil
 		}
-		s.member[url].Status = statusNormal
+		s.member[index].Status = statusNormal
 		logs.Info("change a oldMember status, url=%s tag=%s", url, tag)
 	} else { // 注册新节点
-		s.member[url] = newMember
+		s.member = append(s.member, newMember)
 		logs.Info("add a new member, url=%s tag=%s", url, tag)
 	}
 	return nil
@@ -133,6 +161,7 @@ func (m *ServiceMaster) Register(req RegisterPackage) error {
 			err = fmt.Errorf("empty name or s2skey")
 			break
 		}
+		// s2sKey验证
 		md5Ctx := md5.New()
 		md5Ctx.Write([]byte(m.secret + req.Name))
 		md5Key := hex.EncodeToString(md5Ctx.Sum(nil))
@@ -141,13 +170,14 @@ func (m *ServiceMaster) Register(req RegisterPackage) error {
 			logs.Debug("expect key=%s", md5Key)
 			break
 		}
-		if service, isExist := m.services[req.Name]; !isExist { // 第一个节点
+		// 服务注册
+		if service, isExist := m.services[req.Name]; !isExist { // 第一个节点,新建服务
 			newServices := NewS2sService(req.Name)
 			if err = newServices.AddMenber(req.URL, req.Tag); err == nil {
 				m.services[req.Name] = newServices
 			}
 		} else {
-			err = service.AddMenber(req.URL, req.Tag)
+			err = service.AddMenber(req.URL, req.Tag) // 非首个节点,加入到服务队列
 		}
 	}
 	if err != nil {
@@ -156,4 +186,92 @@ func (m *ServiceMaster) Register(req RegisterPackage) error {
 	}
 	logs.Info("register services success: req=%+v", req)
 	return nil
+}
+
+// 根据服务的名称获取一个节点的地址
+func (m *ServiceMaster) GetUrlByServiceName(name string) (url string, err error) {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	service, isExist := m.services[name]
+	if !isExist {
+		return "", fmt.Errorf("service not found: name=%s", name)
+	}
+	if len(service.member) == 0 {
+		return "", fmt.Errorf("no member in it service: service=%+v", service)
+	}
+	targetIndex := service.counter % len(service.member)
+	service.counter++
+	return service.member[targetIndex].URL, nil
+}
+
+//----------------- Temp TestCode --------------------
+
+func (m *ServiceMaster) RegisterTest(req RegisterPackage) error {
+	m.mux.Lock()
+	defer m.mux.Unlock()
+	var err error
+	for loop := true; loop; loop = false {
+		if req.Name == "" || req.S2sKey == "" {
+			err = fmt.Errorf("empty name or s2skey")
+			break
+		}
+		// 服务注册
+		if service, isExist := m.services[req.Name]; !isExist { // 第一个节点,新建服务
+			newServices := NewS2sService(req.Name)
+			if err = newServices.AddMenber(req.URL, req.Tag); err == nil {
+				m.services[req.Name] = newServices
+			}
+		} else {
+			err = service.AddMenber(req.URL, req.Tag) // 非首个节点,加入到服务队列
+		}
+	}
+	if err != nil {
+		logs.Warn("register services failed: error=%v req=%+v", err, req)
+		return err
+	}
+	logs.Info("register services success: req=%+v", req)
+	return nil
+}
+
+func test() {
+	req1 := RegisterPackage{
+		Name:   "test",
+		URL:    "url1",
+		S2sKey: "...",
+		Tag:    "sss",
+	}
+	req2 := RegisterPackage{
+		Name:   "test",
+		URL:    "url2",
+		S2sKey: "...",
+		Tag:    "sss",
+	}
+	req3 := RegisterPackage{
+		Name:   "test",
+		URL:    "url3",
+		S2sKey: "...",
+		Tag:    "sss",
+	}
+	err := s2sMaster.RegisterTest(req1)
+	err = s2sMaster.RegisterTest(req2)
+	err = s2sMaster.RegisterTest(req3)
+	logs.Info("error=%v", err)
+
+	url, err := s2sMaster.GetUrlByServiceName("test")
+	logs.Info("url=%s error=%v", url, err)
+
+	url, err = s2sMaster.GetUrlByServiceName("test")
+	logs.Info("url=%s error=%v", url, err)
+	url, err = s2sMaster.GetUrlByServiceName("test")
+	logs.Info("url=%s error=%v", url, err)
+	url, err = s2sMaster.GetUrlByServiceName("test")
+	logs.Info("url=%s error=%v", url, err)
+	url, err = s2sMaster.GetUrlByServiceName("test")
+	logs.Info("url=%s error=%v", url, err)
+	url, err = s2sMaster.GetUrlByServiceName("test")
+	logs.Info("url=%s error=%v", url, err)
+	url, err = s2sMaster.GetUrlByServiceName("test2")
+	logs.Info("url=%s error=%v", url, err)
+	url, err = s2sMaster.GetUrlByServiceName("test2")
+	logs.Info("url=%s error=%v", url, err)
 }

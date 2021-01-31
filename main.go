@@ -25,15 +25,15 @@ func initMain() {
 	if config.ServerConfig.IsTest {
 		logs.SetLogger("console")
 	} else {
-		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s", "daily ": "false"}`, config.ServerConfig.LogPath))
+		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s", "daily": "false"}`, config.ServerConfig.LogPath))
 		// logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
 	}
 	blogHandler = handler.CreateHandler(config.ServerConfig.CloneBlogPath, "bolg")
 }
 
 func test2() {
-	ctx, _ := rpc.GetDefaultContext()
-	// defer cancel()
+	ctx, cancel := rpc.GetDefaultContext()
+	defer cancel()
 	client, err := rpc.NewCodeRunner(ctx)
 	if err != nil {
 		logs.Error("new client fail: error=%v", err)
@@ -44,13 +44,15 @@ func test2() {
 }
 
 func test() {
-	test2()
-	time.Sleep(time.Minute * 10)
+	for {
+		time.Sleep(10 * time.Second)
+		test2()
+	}
 	os.Exit(0)
 }
 
 func main() {
-	test()
+	go test()
 	initMain()
 	muxer := http.NewServeMux()
 	muxer.HandleFunc("/", defaultHandler)
