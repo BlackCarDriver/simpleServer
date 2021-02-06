@@ -24,6 +24,7 @@ const (
 const (
 	mStatusNormal  = 0
 	mStatusTesting = 99
+	mStatusDead    = -99
 )
 
 func init() {
@@ -64,4 +65,51 @@ func RegisterServiceHandler(w http.ResponseWriter, r *http.Request) {
 // 返回一个10分钟自动关闭的context
 func GetDefaultContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), time.Minute*10)
+}
+
+//----------------- 统计数据结构 --------------------
+
+// 节点相关统计数据
+type overViewMember struct {
+	Tag      string `json:"tag"`
+	URL      string `json:"url"`
+	Status   int    `json:"status"`
+	Counter  int64  `json:"counter"`
+	Failed   int64  `json:"failed"`
+	RegTime  int64  `json:"regTime"`
+	LastTime int64  `json:"lastTime"`
+}
+
+// 服务相关统计数据
+type overViewService struct {
+	Name    string           `json:"name"`
+	Members []overViewMember `json:"members"`
+	Counter int64            `json:"counter"`
+}
+
+// 获取rpc服务统计数据
+func GetRpcOverview() []overViewService {
+	var list []overViewService = make([]overViewService, 0)
+	for _, service := range s2sMaster.services {
+		tmpMembers := make([]overViewMember, 0)
+		var totalCounter int64
+		for _, member := range service.member {
+			tmpMembers = append(tmpMembers, overViewMember{
+				Tag:      member.Tag,
+				URL:      member.URL,
+				Status:   member.Status,
+				Counter:  member.Counter,
+				RegTime:  member.RegTimestamp,
+				LastTime: member.LastTimestamp,
+				Failed:   member.Failed,
+			})
+			totalCounter += member.Counter
+		}
+		list = append(list, overViewService{
+			Name:    service.Name,
+			Counter: totalCounter,
+			Members: tmpMembers,
+		})
+	}
+	return list
 }

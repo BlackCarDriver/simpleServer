@@ -55,6 +55,8 @@ type s2sMember struct {
 	URL           string
 	Tag           string
 	Status        int
+	Counter       int64 // 提供服务的总次数
+	Failed        int64 // 服务失败的次数
 	RegTimestamp  int64 // 注册时间
 	LastTimestamp int64 // 上次提供服务的时间
 }
@@ -100,8 +102,8 @@ func (m *s2sMember) Test() bool {
 type S2sServices struct {
 	addMemberMux *sync.Mutex
 	Name         string       // 服务名称
-	counter      int          // 请求次数
 	member       []*s2sMember // 节点列表
+	counter      int64        // 请求次数
 }
 
 // 创建一个新服务
@@ -126,10 +128,13 @@ func (s *S2sServices) AddMenber(req RegisterPackage) error {
 		return err
 	}
 	newMember := &s2sMember{
-		URL:          req.URL,
-		Tag:          req.Tag,
-		Status:       statusNormal,
-		RegTimestamp: time.Now().Unix(),
+		URL:           req.URL,
+		Tag:           req.Tag,
+		Status:        statusNormal,
+		Counter:       0,
+		Failed:        0,
+		LastTimestamp: 0,
+		RegTimestamp:  time.Now().Unix(),
 	}
 	if !newMember.Test() {
 		logs.Warn("add member failed: test not pass")
@@ -196,7 +201,9 @@ func (s *S2sServices) RemoveMember2(url string) bool {
 		logs.Info("no member found to delete: request=%+v", url)
 		return false
 	}
-	s.member = append(s.member[0:index], s.member[index+1:]...)
+	// s.member = append(s.member[0:index], s.member[index+1:]...)
+	s.member[index].Status = mStatusDead
+	s.member[index], s.member[len(s.member)-1] = s.member[len(s.member)-1], s.member[index] // 将失效的节点放到最后
 	return true
 }
 
@@ -205,9 +212,8 @@ func (s *S2sServices) RemoveMember2(url string) bool {
 // 服务管理员
 type ServiceMaster struct {
 	mux        *sync.Mutex
-	reportLock *sync.Mutex    // 排查问题节点的互斥锁
-	secret     string         // 用于防治恶意注册服务
-	counter    map[string]int // 服务访问次数计数器
+	reportLock *sync.Mutex // 排查问题节点的互斥锁
+	secret     string      // 用于防治恶意注册服务
 	services   map[string]*S2sServices
 }
 
@@ -216,7 +222,6 @@ func NewServiceMaster() *ServiceMaster {
 	return &ServiceMaster{
 		mux:        new(sync.Mutex),
 		reportLock: new(sync.Mutex),               // GoReportProblemUrl专用互斥锁
-		counter:    make(map[string]int),          // 统计每个service提供服务的次数
 		services:   make(map[string]*S2sServices), //服务名到服务的映射
 	}
 }
@@ -267,7 +272,7 @@ func (m *ServiceMaster) UnRegister(req RegisterPackage) error {
 	return nil
 }
 
-// 堵塞一段时间来测试一个节点，若测试节点失败则删除改节点
+// 堵塞一段时间来测试一个节点，并更新节点状态
 func (m *ServiceMaster) GoReportProblemUrl(s2sName, url string) {
 	m.reportLock.Lock()
 	defer m.reportLock.Unlock()
@@ -292,23 +297,28 @@ func (m *ServiceMaster) GoReportProblemUrl(s2sName, url string) {
 		logs.Warning("url not found in member list: url=%s", url)
 		return
 	}
+	if target.Status != mStatusNormal {
+		logs.Info("skip check")
+		return
+	}
+	target.Failed++
 	target.Status = mStatusTesting // 将节点的状态标记为灰度
-	go func() {
-		logs.Info("start checking service member, url=%s", url)
-		testTimes := 5
-		for i := 1; i <= testTimes; i++ {
-			if target.Test() {
-				logs.Info("test success after %d try...", i)
-				target.Status = mStatusNormal
-				return
-			}
-			logs.Info("test failed × %d", i)
-			time.Sleep(2 * time.Second)
+
+	logs.Info("start checking service member, url=%s", url)
+	testTimes := 5
+	for i := 1; i <= testTimes; i++ {
+		if target.Test() {
+			logs.Info("test success after %d try...", i)
+			target.Status = mStatusNormal
+			return
 		}
-		delRes := service.RemoveMember2(url)
-		logs.Warning("a node might destroy: s2sName=%s url=%s deleteResult=%v", s2sName, url, delRes)
-		// TODO: 处罚告警
-	}()
+		logs.Info("test failed × %d", i)
+		time.Sleep(2 * time.Second)
+	}
+	// 成功注册的节点发现测试失败
+	delRes := service.RemoveMember2(url)
+	logs.Warning("a node might destroy: s2sName=%s url=%s deleteResult=%v", s2sName, url, delRes)
+	// TODO: 处罚告警
 
 }
 
@@ -323,15 +333,16 @@ func (m *ServiceMaster) GetUrlByServiceName(name string) (url string, err error)
 	if len(service.member) == 0 {
 		return "", fmt.Errorf("no member in it service: service=%+v", service)
 	}
-	targetIndex := service.counter % len(service.member)
+	targetIndex := service.counter % int64(len(service.member))
 	service.counter++
-	// 若分配的节点处于灰度状态,则返回第一个能正常服务的节点
+	// 若分配的节点处于灰度状态,则返回下一个正常的节点
 	if service.member[targetIndex].Status != mStatusNormal {
 		logs.Info("turn to a unnormal node: member=%+v", *service)
-		normalIndex := -1
-		for i := 0; i < len(service.member); i++ {
-			if service.member[i].Status == mStatusNormal {
-				normalIndex = i
+		var normalIndex int64 = -1
+		for i := targetIndex; i <= targetIndex+int64(len(m.services)); i++ {
+			next := i % int64(len(service.member))
+			if service.member[next].Status == mStatusNormal {
+				normalIndex = int64(next)
 				break
 			}
 		}
@@ -339,82 +350,10 @@ func (m *ServiceMaster) GetUrlByServiceName(name string) (url string, err error)
 			logs.Warning("no member is normal: totalNumber=%d s2sName=%s", len(service.member), name)
 			return "", fmt.Errorf("no member in normal stuats: s2sName=%+v", name)
 		}
-		return service.member[normalIndex].URL, nil
+		targetIndex = normalIndex
 	}
-	return service.member[targetIndex].URL, nil
-}
-
-//----------------- Temp TestCode --------------------
-
-func (m *ServiceMaster) RegisterTest(req RegisterPackage) error {
-	m.mux.Lock()
-	defer m.mux.Unlock()
-	var err error
-	for loop := true; loop; loop = false {
-		if req.Name == "" || req.S2sKey == "" {
-			err = fmt.Errorf("empty name or s2skey")
-			break
-		}
-		if err = req.Check(); err != nil {
-			break
-		}
-		// 服务注册
-		if service, isExist := m.services[req.Name]; !isExist {
-			newServices := NewS2sService(req.Name)
-			if err = newServices.AddMenber(req); err == nil {
-				m.services[req.Name] = newServices
-			}
-		} else {
-			err = service.AddMenber(req)
-		}
-	}
-	if err != nil {
-		logs.Warn("register services failed: error=%v req=%+v", err, req)
-		return err
-	}
-	logs.Info("register services success: req=%+v", req)
-	return nil
-}
-
-func test() {
-	req1 := RegisterPackage{
-		Name:   "test",
-		URL:    "url1",
-		S2sKey: "...",
-		Tag:    "sss",
-	}
-	req2 := RegisterPackage{
-		Name:   "test",
-		URL:    "url2",
-		S2sKey: "...",
-		Tag:    "sss",
-	}
-	req3 := RegisterPackage{
-		Name:   "test",
-		URL:    "url3",
-		S2sKey: "...",
-		Tag:    "sss",
-	}
-	err := s2sMaster.RegisterTest(req1)
-	err = s2sMaster.RegisterTest(req2)
-	err = s2sMaster.RegisterTest(req3)
-	logs.Info("error=%v", err)
-
-	url, err := s2sMaster.GetUrlByServiceName("test")
-	logs.Info("url=%s error=%v", url, err)
-
-	url, err = s2sMaster.GetUrlByServiceName("test")
-	logs.Info("url=%s error=%v", url, err)
-	url, err = s2sMaster.GetUrlByServiceName("test")
-	logs.Info("url=%s error=%v", url, err)
-	url, err = s2sMaster.GetUrlByServiceName("test")
-	logs.Info("url=%s error=%v", url, err)
-	url, err = s2sMaster.GetUrlByServiceName("test")
-	logs.Info("url=%s error=%v", url, err)
-	url, err = s2sMaster.GetUrlByServiceName("test")
-	logs.Info("url=%s error=%v", url, err)
-	url, err = s2sMaster.GetUrlByServiceName("test2")
-	logs.Info("url=%s error=%v", url, err)
-	url, err = s2sMaster.GetUrlByServiceName("test2")
-	logs.Info("url=%s error=%v", url, err)
+	targetMember := service.member[targetIndex]
+	targetMember.Counter++
+	targetMember.LastTimestamp = time.Now().Unix()
+	return targetMember.URL, nil
 }

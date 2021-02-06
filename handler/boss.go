@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 
+	"../rpc"
 	"../toolbox"
 
 	"../config"
@@ -43,9 +44,11 @@ func BossAPIHandler(w http.ResponseWriter, r *http.Request) {
 	case "bsapi/tool/netdish/upload":
 		netDishFileUploadHandler(w, r)
 	case "bsapi/manage/ipWhiteList/list":
-		IPWhitelistHandler(w, r)
+		ipWhitelistHandler(w, r)
 	case "bsapi/manage/ipWhiteList/ope":
-		IPWhitelistOpeHandler(w, r)
+		ipWhitelistOpeHandler(w, r)
+	case "bsapi/monitor/rpcOverview":
+		getRpcOverview(w, r)
 	default:
 		NotFoundHandler(w, r)
 	}
@@ -219,7 +222,7 @@ func netDishFileUploadHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // 服务端配置-IP白名单配置:获取ip标记列表
-func IPWhitelistHandler(w http.ResponseWriter, r *http.Request) {
+func ipWhitelistHandler(w http.ResponseWriter, r *http.Request) {
 	type payLoadStruct struct {
 		Ip    string `json:"ip"`
 		Tag   string `json:"tag"`
@@ -239,7 +242,7 @@ func IPWhitelistHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // 服务端配置-IP白名单配置：新增修改标记\删除标记
-func IPWhitelistOpeHandler(w http.ResponseWriter, r *http.Request) {
+func ipWhitelistOpeHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		OpeType string `json:"opeType"`
 		IP      string `json:"ip"`
@@ -278,5 +281,12 @@ func IPWhitelistOpeHandler(w http.ResponseWriter, r *http.Request) {
 		resp.Status = -1
 		resp.Msg = fmt.Sprint(err)
 	}
+	responseJson(&w, resp)
+}
+
+// 查看RPC服务状况概述
+func getRpcOverview(w http.ResponseWriter, r *http.Request) {
+	var resp respStruct
+	resp.PayLoad = rpc.GetRpcOverview()
 	responseJson(&w, resp)
 }
