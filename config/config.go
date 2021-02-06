@@ -26,6 +26,7 @@ type serverConfig struct {
 	CloneBlogPath string `xml:"clone_blog_path"` // 克隆网站存储的文件夹路径
 	LogPath       string `xml:"log_path"`        // 日志存储的位置
 	BossPath      string `xml:"boss_path"`       // 管理后台前端构建文件路径
+	S2SSecret     string `xml:"s2s_secret"`      //s2s密钥
 }
 
 type databaseConfig struct {

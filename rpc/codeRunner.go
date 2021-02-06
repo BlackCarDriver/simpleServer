@@ -2,18 +2,12 @@ package rpc
 
 import (
 	"context"
-	"time"
 
 	"codeRunner"
 
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/astaxie/beego/logs"
 )
-
-// 返回一个10分钟自动关闭的context
-func GetDefaultContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), time.Minute*10)
-}
 
 // 创建一个codeRunner服务端
 func NewCodeRunner(ctx context.Context) (client *codeRunner.CodeRunnerClient, err error) {
@@ -24,19 +18,27 @@ func NewCodeRunner(ctx context.Context) (client *codeRunner.CodeRunnerClient, er
 		logs.Error("get service addre failed: err=%s", err)
 		return
 	}
-	transport, err = thrift.NewTSocket(addr)
-	if err != nil {
-		logs.Error("get socket failed: error=%v addr=%s", err, addr)
-		return
+	for loop := true; loop; loop = false {
+		transport, err = thrift.NewTSocket(addr)
+		if err != nil {
+			logs.Error("get socket failed: error=%v addr=%s", err, addr)
+			break
+		}
+		transport, err = transportFactory.GetTransport(transport)
+		if err != nil {
+			logs.Error("get transport failed: error=%v", err)
+			break
+		}
+		if err = transport.Open(); err != nil {
+			logs.Error("open transport failed: error=%v", err)
+			transport.Close()
+			break
+		}
 	}
-	transport, err = transportFactory.GetTransport(transport)
+	// 上报错误节点
 	if err != nil {
-		logs.Error("get transport failed: error=%v", err)
-		return
-	}
-	if err = transport.Open(); err != nil {
-		logs.Error("open transport failed: error=%v", err)
-		transport.Close()
+		logs.Info("get codeRunner client fail, already report...")
+		go s2sMaster.GoReportProblemUrl(codeRunnerS2SName, addr)
 		return
 	}
 	go func() { // 延迟关闭连接

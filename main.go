@@ -39,7 +39,7 @@ func test2() {
 		logs.Error("new client fail: error=%v", err)
 		return
 	}
-	res, err := client.Ping(ctx)
+	res, err := client.Ping(ctx, fmt.Sprint(time.Now().Unix()))
 	logs.Info("res=%v error=%v", res, err)
 }
 
