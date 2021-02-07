@@ -17,7 +17,7 @@ var IpMonitor *tb.IPMonitor
 
 func init() {
 	// 初始化ip监控
-	IpMonitor = tb.MakeIpMonitor()
+	IpMonitor = tb.NewIpMonitor()
 
 	// 从mongo中读取旧的标记记录，同时开启协程来定期持久化ip标记数据
 	if !config.ServerConfig.IsTest {

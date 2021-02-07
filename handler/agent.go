@@ -125,6 +125,7 @@ func remakeURI(URI string) string {
 	return fmt.Sprintf("api/%s/%s.json", path, params)
 }
 
+/*
 // 用于返回保存在本地的数据时设置响应头header
 func setDefaultHeader(w *http.ResponseWriter, URI string) {
 	(*w).Header().Set("Connection", "keep-alive")
@@ -169,3 +170,4 @@ func setDefaultHeader(w *http.ResponseWriter, URI string) {
 		return
 	}
 }
+*/

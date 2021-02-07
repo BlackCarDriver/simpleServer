@@ -25,7 +25,7 @@ func initMain() {
 	if config.ServerConfig.IsTest {
 		logs.SetLogger("console")
 	} else {
-		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s", "daily": "false"}`, config.ServerConfig.LogPath))
+		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s", "daily": false}`, config.ServerConfig.LogPath))
 		// logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
 	}
 	blogHandler = handler.CreateHandler(config.ServerConfig.CloneBlogPath, "bolg")
@@ -79,7 +79,7 @@ func defaultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	logs.Debug("default handler: url=%s", url)
 	switch url {
-	case "favicon.ico": // 返回浏览器标签显示的图标
+	case "favicon.ico": // 返回浏览器标签显示的图标 TODO:根据location不同返回不同icon
 		http.ServeFile(w, r, "./source/favicon.ico")
 	case "reqMsg": // 查看请求的详细信息
 		wrapper(handler.GetRequestDetail, w, r, true, true)

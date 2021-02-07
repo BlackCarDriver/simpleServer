@@ -110,7 +110,7 @@ func AddIPBlackList(w http.ResponseWriter, r *http.Request) {
 		logs.Warning(err)
 		goto end
 	}
-	if reqForm.IsBlack == "on" { // 移除ip标记
+	if reqForm.IsBlack == "on" {
 		IpMonitor.DeleteIpTag(reqForm.IP)
 	} else {
 		IpMonitor.UpdateIpTag(reqForm.IP, "Guest")
