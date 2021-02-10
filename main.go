@@ -52,7 +52,7 @@ func test() {
 }
 
 func main() {
-	go test()
+	// go test()
 	initMain()
 	muxer := http.NewServeMux()
 	muxer.HandleFunc("/", defaultHandler)

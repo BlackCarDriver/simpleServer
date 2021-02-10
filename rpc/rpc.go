@@ -23,8 +23,10 @@ const (
 
 const (
 	mStatusNormal  = 0
-	mStatusTesting = 99
-	mStatusDead    = -99
+	mStatusTesting = 1   // 检查中
+	mStatusHangUp  = 2   // 手动暂停
+	mStatusDown    = -1  // 主动下线
+	mStatusDead    = -99 // 异常
 )
 
 func init() {
@@ -53,10 +55,13 @@ func RegisterServiceHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		logs.Info("register service success: req=%+v", req)
 	}
-	resp.Msg = "OK"
+
 	if err != nil {
 		resp.Status = -1
 		resp.Msg = fmt.Sprint(err)
+	} else {
+		resp.Msg = "OK"
+		w.WriteHeader(207) // 约定以297作为注册成功的标志
 	}
 	jsResp, _ := json.Marshal(resp)
 	fmt.Fprintf(w, "%s", string(jsResp))

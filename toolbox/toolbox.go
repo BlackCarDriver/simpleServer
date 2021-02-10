@@ -20,7 +20,8 @@ import (
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
-	initMailSender()
+	go initMailSender()
+	go initSysMonitor()
 }
 
 // 从请求中获取IP和端口

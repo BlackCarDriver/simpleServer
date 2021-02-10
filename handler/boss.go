@@ -10,10 +10,10 @@ import (
 	"os"
 	"strings"
 
-	"../rpc"
 	"../toolbox"
 
 	"../config"
+	"../rpc"
 
 	"github.com/astaxie/beego/logs"
 )
@@ -49,6 +49,8 @@ func BossAPIHandler(w http.ResponseWriter, r *http.Request) {
 		ipWhitelistOpeHandler(w, r)
 	case "bsapi/monitor/rpcOverview":
 		getRpcOverview(w, r)
+	case "bsapi/monitor/sysStateInfo":
+		getSysState(w, r)
 	default:
 		NotFoundHandler(w, r)
 	}
@@ -284,9 +286,33 @@ func ipWhitelistOpeHandler(w http.ResponseWriter, r *http.Request) {
 	responseJson(&w, resp)
 }
 
-// 查看RPC服务状况概述
+// 服务端监控-RPC服务状况：查看状况
 func getRpcOverview(w http.ResponseWriter, r *http.Request) {
 	var resp respStruct
 	resp.PayLoad = rpc.GetRpcOverview()
 	responseJson(&w, resp)
 }
+
+// 服务端监控-系统状态：查看最近一小时或一周的系统状况
+// get请求,参数:type=[long\short]
+func getSysState(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	params := r.FormValue("type")
+	var resp respStruct
+	if params == "short" {
+		resp.PayLoad = toolbox.SysStateInfoShort.Report()
+	} else if params == "long" {
+		resp.PayLoad = toolbox.SysStateInfoLong.Report()
+	} else if params == "realTime" {
+		resp.PayLoad = toolbox.GetState()
+	} else {
+		resp.Status = -1
+		resp.Msg = "unexpect params"
+		w.WriteHeader(http.StatusBadRequest)
+		logs.Warn("unexpect params: params=%s", params)
+	}
+	responseJson(&w, resp)
+}
+
+// 服务端监控-RPC服务状况：设置节点状态
+// 服务端监控-RPC服务状况：测试服务方法

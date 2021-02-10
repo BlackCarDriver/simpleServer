@@ -118,6 +118,19 @@ func (m *s2sMember) UpdateCounter(success bool) {
 	}()
 }
 
+// 更新节点状态
+func (m *s2sMember) UpdateStatus(status int) {
+	if m == nil {
+		logs.Error("calling UpdateStatus() of a nil pointer....")
+		return
+	}
+	go func() {
+		m.mux.Lock()
+		defer m.mux.Unlock()
+		m.Status = status
+	}()
+}
+
 // 测试可能存在问题的节点并更新状态
 func (m *s2sMember) GoReport() {
 	if m == nil {
@@ -142,7 +155,8 @@ func (m *s2sMember) GoReport() {
 		logs.Info("test failed × %d", i)
 		time.Sleep(2 * time.Second)
 	}
-	// 测试失败 TODO: 触发告警
+	// 测试失败
+	// TODO: 触发告警
 	m.Status = mStatusDead
 	logs.Warning("it s2sMember might destroy: node=%+v", *m)
 	return
