@@ -25,7 +25,7 @@ func initMain() {
 	if config.ServerConfig.IsTest {
 		logs.SetLogger("console")
 	} else {
-		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s", "daily": false}`, config.ServerConfig.LogPath))
+		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s", "daily": false, "maxlines": 20000}`, config.ServerConfig.LogPath))
 		// logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
 	}
 	blogHandler = handler.CreateHandler(config.ServerConfig.CloneBlogPath, "bolg")

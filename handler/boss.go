@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -8,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"../toolbox"
@@ -47,10 +49,14 @@ func BossAPIHandler(w http.ResponseWriter, r *http.Request) {
 		ipWhitelistHandler(w, r)
 	case "bsapi/manage/ipWhiteList/ope":
 		ipWhitelistOpeHandler(w, r)
-	case "bsapi/monitor/rpcOverview":
+	case "bsapi/monitor/rpc/overview":
 		getRpcOverview(w, r)
+	case "bsapi/monitor/rpc/ope":
+		rpcManager(w, r)
 	case "bsapi/monitor/sysStateInfo":
 		getSysState(w, r)
+	case "bsapi/monitor/getServerLog":
+		getServerLog(w, r)
 	default:
 		NotFoundHandler(w, r)
 	}
@@ -293,6 +299,34 @@ func getRpcOverview(w http.ResponseWriter, r *http.Request) {
 	responseJson(&w, resp)
 }
 
+// 服务端监控-RPC服务状况：设置节点状态
+func rpcManager(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		S2SName string `json:"s2sName"`
+		Addr    string `json:"addr"`
+		Ope     string `json:"ope"`
+	}
+	var resp respStruct
+	var err error
+	for loop := true; loop; loop = false {
+		err = toolbox.MustQueryFromRequest(r, &req)
+		if err != nil {
+			logs.Warn("parse request fail: error=%+v", err)
+			break
+		}
+		logs.Info("params=%+v", req)
+		err = rpc.SetNodeStatus(req.S2SName, req.Addr, req.Ope)
+	}
+	if err != nil {
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+		w.WriteHeader(http.StatusInternalServerError)
+	} else {
+		resp.Msg = "OK"
+	}
+	responseJson(&w, resp)
+}
+
 // 服务端监控-系统状态：查看最近一小时或一周的系统状况
 // get请求,参数:type=[long\short]
 func getSysState(w http.ResponseWriter, r *http.Request) {
@@ -314,5 +348,52 @@ func getSysState(w http.ResponseWriter, r *http.Request) {
 	responseJson(&w, resp)
 }
 
-// 服务端监控-RPC服务状况：设置节点状态
+// 服务端监控-服务端日志: 日志搜索
+func getServerLog(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var file *os.File
+	var resp respStruct
+	for loop := true; loop; loop = false {
+		r.ParseForm()
+		target := r.FormValue("target")
+		logs.Info("target=%s", target)
+		file, err = os.Open(config.ServerConfig.LogPath)
+		if err != nil {
+			logs.Error("Open logfile fall: error=%v", err)
+			break
+		}
+		defer file.Close()
+		buf := bufio.NewReader(file)
+		var bytes []byte
+		bytes, err = ioutil.ReadAll(buf)
+		if err != nil {
+			logs.Error("read file failed: error=%v", err)
+			break
+		}
+
+		if target == "" {
+			resp.PayLoad = strings.Split(string(bytes), "\n")
+			break
+		}
+		var reg *regexp.Regexp
+		regStr := fmt.Sprintf(`\B.*%s.*\n`, target)
+		logs.Debug("regstr=%s", regStr)
+		reg, err = regexp.Compile(regStr)
+		if err != nil {
+			logs.Warn("Compile regexp fail: regStr=%s error=%v", regStr, err)
+			break
+		}
+		res := reg.FindAllString(string(bytes), -1)
+		resp.PayLoad = res
+		logs.Debug("payload length=%d", len(res))
+	}
+
+	if err != nil {
+		resp.PayLoad = fmt.Sprint(err)
+		resp.Status = -1
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	responseJson(&w, resp)
+}
+
 // 服务端监控-RPC服务状况：测试服务方法

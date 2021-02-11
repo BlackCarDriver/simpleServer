@@ -36,7 +36,7 @@ func init() {
 	logs.Info("rpc init...")
 }
 
-// 注册RPC服务的http接口
+// 注册或注销RPC服务的http接口
 func RegisterServiceHandler(w http.ResponseWriter, r *http.Request) {
 	var req RegisterPackage
 	var err error
@@ -49,11 +49,17 @@ func RegisterServiceHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		err = s2sMaster.Register(req)
+		if req.Ope == "register" {
+			err = s2sMaster.Register(req)
+		} else if req.Ope == "unregister" {
+			err = s2sMaster.UnRegister(req)
+		} else {
+			err = fmt.Errorf("unexpect params: ope=%q", req.Ope)
+		}
 		if err != nil {
 			break
 		}
-		logs.Info("register service success: req=%+v", req)
+		logs.Info("%s service success: req=%+v", req.Ope, req)
 	}
 
 	if err != nil {
@@ -117,4 +123,48 @@ func GetRpcOverview() []overViewService {
 		})
 	}
 	return list
+}
+
+// 设置特定节点的状态
+// status:[remove|restore|hang]
+func SetNodeStatus(s2sName string, addr string, status string) error {
+	s2sMaster.mux.Lock()
+	defer s2sMaster.mux.Unlock()
+	var err error
+	for loop := true; loop; loop = false {
+		if s2sName == "" || addr == "" || status == "" {
+			err = fmt.Errorf("unexpect params")
+			break
+		}
+		service, isExist := s2sMaster.services[s2sName]
+		if !isExist {
+			err = fmt.Errorf("service not found: s2sName=%s", s2sName)
+			break
+		}
+		if len(service.member) == 0 {
+			err = fmt.Errorf("no member in it service: s2sName=%s", s2sName)
+			break
+		}
+		var member *s2sMember
+		member, err = service.GetMemberByAddr(addr)
+		if err != nil {
+			break
+		}
+		switch status {
+		case "hang":
+			member.UpdateStatus(mStatusHangUp)
+		case "restore":
+			member.UpdateStatus(mStatusNormal)
+		case "remove":
+			err = service.RemoveMemberByAddr(addr)
+		default:
+			err = fmt.Errorf("unknow params: status=%s", status)
+		}
+	}
+	if err != nil {
+		logs.Error("update member stauts failed: error=%v", err)
+		return err
+	}
+	logs.Info("update member status success: s2sName=%s addr=%s", s2sName, addr)
+	return nil
 }

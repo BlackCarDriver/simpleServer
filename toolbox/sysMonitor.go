@@ -58,12 +58,18 @@ func initSysMonitor() {
 
 // 系统负载信息
 type sysState struct {
-	Timestamp     int64   `json:"timestamp"`
-	CpuPercent    float64 `json:"cpuPercent"`    // cpu平均负载
-	DishPercent   float64 `json:"dishPercent"`   // 磁盘占用量
-	AvgLoad       float64 `json:"avgLoad"`       // 最近1分钟的平均负载
-	ProcsTotal    int     `json:"procsTotal"`    // 进程总数
-	VMUsedPercent float64 `json:"vmUsedPercent"` // 虚拟内存使用量
+	Timestamp     int64   `json:"t"`
+	CpuPercent    float64 `json:"c"` // cpu平均负载
+	DishPercent   float64 `json:"d"` // 磁盘占用量
+	AvgLoad       float64 `json:"a"` // 最近1分钟的平均负载
+	ProcsTotal    int     `json:"p"` // 进程总数
+	VMUsedPercent float64 `json:"v"` // 虚拟内存使用量
+	// Timestamp     int64   `json:"timestamp"`
+	// CpuPercent    float64 `json:"cpuPercent"`    // cpu平均负载
+	// DishPercent   float64 `json:"dishPercent"`   // 磁盘占用量
+	// AvgLoad       float64 `json:"avgLoad"`       // 最近1分钟的平均负载
+	// ProcsTotal    int     `json:"procsTotal"`    // 进程总数
+	// VMUsedPercent float64 `json:"vmUsedPercent"` // 虚拟内存使用量
 }
 
 func GetState() *sysState {

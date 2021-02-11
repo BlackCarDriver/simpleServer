@@ -28,13 +28,14 @@ type RegisterPackage struct {
 	Name   string `json:"name"` // 服务名
 	URL    string `json:"url"`
 	S2sKey string `json:"s2sKey"`
-	Tag    string `json:"tag"`
+	Tag    string `json:"tag"` // 节点备注
+	Ope    string `json:"ope"` // 操作类型
 }
 
 // 验证节点信息
 func (r *RegisterPackage) Check() error {
 	if r.URL == "" || r.Name == "" {
-		return errors.New("empty url or name")
+		return errors.New("empty url or name or ope...")
 	}
 	md5Ctx := md5.New()
 	md5Ctx.Write([]byte(config.ServerConfig.S2SSecret + r.Name + r.URL))
@@ -231,11 +232,11 @@ func (s *S2sServices) AddMenber(req RegisterPackage) error {
 	return nil
 }
 
-// 移除一个节点
+// 更新节点状态为下线(服务主动下线用)
 func (s *S2sServices) RemoveMember(req RegisterPackage) bool {
 	s.addMemberMux.Lock()
 	defer s.addMemberMux.Unlock()
-	if err := req.Check; err != nil {
+	if err := req.Check(); err != nil {
 		logs.Warning("skip remove for check s2sKey failed")
 		return false
 	}
@@ -250,8 +251,45 @@ func (s *S2sServices) RemoveMember(req RegisterPackage) bool {
 		logs.Info("no member found to delete: request=%+v", req)
 		return false
 	}
-	s.member = append(s.member[0:index], s.member[index+1:]...)
+	s.member[index].UpdateStatus(mStatusDown)
+	logs.Info("unregister success: req=%+v", req)
 	return true
+}
+
+// 移除特定地址的节点(管理后台用)
+func (s *S2sServices) RemoveMemberByAddr(addr string) error {
+	s.addMemberMux.Lock()
+	defer s.addMemberMux.Unlock()
+	index := -1
+	for i := 0; i < len(s.member); i++ {
+		if s.member[i].URL == addr {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return fmt.Errorf("no member found to delete: addr=%s", addr)
+	}
+	s.member = append(s.member[0:index], s.member[index+1:]...)
+	return nil
+}
+
+// 返回特定地址的节点
+func (s *S2sServices) GetMemberByAddr(addr string) (*s2sMember, error) {
+	s.addMemberMux.Lock()
+	defer s.addMemberMux.Unlock()
+	index := -1
+	for i := 0; i < len(s.member); i++ {
+		if s.member[i].URL == addr {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		logs.Info("member not found: target_addr=%s", addr)
+		return nil, fmt.Errorf("member not found")
+	}
+	return s.member[index], nil
 }
 
 //--------------- 管理员 -----------
@@ -298,7 +336,7 @@ func (m *ServiceMaster) Register(req RegisterPackage) error {
 	return nil
 }
 
-// 处理一个服务下线请求 TODO:新增http接口调用
+// 处理一个服务下线请求
 func (m *ServiceMaster) UnRegister(req RegisterPackage) error {
 	m.mux.Lock()
 	defer m.mux.Unlock()
