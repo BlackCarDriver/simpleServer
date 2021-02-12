@@ -3,9 +3,7 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
-	"time"
 
 	"./config"
 	"./handler"
@@ -29,26 +27,6 @@ func initMain() {
 		// logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
 	}
 	blogHandler = handler.CreateHandler(config.ServerConfig.CloneBlogPath, "bolg")
-}
-
-func test2() {
-	ctx, cancel := rpc.GetDefaultContext()
-	defer cancel()
-	client, err := rpc.NewCodeRunner(ctx)
-	if err != nil {
-		logs.Error("new client fail: error=%v", err)
-		return
-	}
-	res, err := client.Ping(ctx, fmt.Sprint(time.Now().Unix()))
-	logs.Info("res=%v error=%v", res, err)
-}
-
-func test() {
-	for {
-		time.Sleep(10 * time.Second)
-		test2()
-	}
-	os.Exit(0)
 }
 
 func main() {

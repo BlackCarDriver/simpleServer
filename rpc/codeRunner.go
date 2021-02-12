@@ -69,3 +69,44 @@ func NewCodeRunner(ctx context.Context) (client *codeRunner.CodeRunnerClient, er
 
 	return
 }
+
+// ----------------------------
+
+func BuildGo() (interface{}, error) {
+	ctx, cancel := GetDefaultContext()
+	defer cancel()
+	client, err := NewCodeRunner(ctx)
+	if err != nil {
+		logs.Error("new client fail: error=%v", err)
+		return nil, err
+	}
+	res, err := client.BuildGo(ctx)
+	logs.Info("resp=%+v error=%v", res, err)
+	return res, err
+}
+
+func BuildCpp() (interface{}, error) {
+	ctx, cancel := GetDefaultContext()
+	defer cancel()
+	client, err := NewCodeRunner(ctx)
+	if err != nil {
+		logs.Error("new client fail: error=%v", err)
+		return nil, err
+	}
+	res, err := client.BuildCpp(ctx)
+	logs.Info("resp=%+v error=%v", res, err)
+	return res, err
+}
+
+func Run() (interface{}, error) {
+	ctx, cancel := GetDefaultContext()
+	defer cancel()
+	client, err := NewCodeRunner(ctx)
+	if err != nil {
+		logs.Error("new client fail: error=%v", err)
+		return nil, err
+	}
+	res, err := client.Run(ctx)
+	logs.Info("resp=%+v error=%v", res, err)
+	return res, err
+}

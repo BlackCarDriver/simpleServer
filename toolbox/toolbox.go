@@ -258,7 +258,7 @@ func MustQueryFromRequest(req *http.Request, ptrToTarget interface{}) (err error
 
 		// 从请求表单中获取相应值
 		rawStr := req.Form.Get(jsTag)
-		if rawStr == "" || tmpVal.Kind() != reflect.String {
+		if rawStr == "" && tmpVal.Kind() != reflect.String {
 			return fmt.Errorf("field not found in query form: index=%d name=%s jsTag=%s form=%v", i, vname, jsTag, req.Form)
 		}
 

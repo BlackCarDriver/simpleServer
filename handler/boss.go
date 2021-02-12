@@ -53,6 +53,8 @@ func BossAPIHandler(w http.ResponseWriter, r *http.Request) {
 		getRpcOverview(w, r)
 	case "bsapi/monitor/rpc/ope":
 		rpcManager(w, r)
+	case "bsapi/monitor/rpc/test":
+		testRPCInterface(w, r)
 	case "bsapi/monitor/sysStateInfo":
 		getSysState(w, r)
 	case "bsapi/monitor/getServerLog":
@@ -396,4 +398,40 @@ func getServerLog(w http.ResponseWriter, r *http.Request) {
 	responseJson(&w, resp)
 }
 
-// 服务端监控-RPC服务状况：测试服务方法
+// 服务端监控-RPC接口测试
+func testRPCInterface(w http.ResponseWriter, r *http.Request) {
+	var err error
+	var resp respStruct
+	var req struct {
+		Tag  string `json:"tag"`
+		Str1 string `json:"str1"`
+		Str2 string `json:"str2"`
+		Str3 string `json:"str3"`
+		Num1 int64  `json:"num1"`
+		Num2 int64  `json:"num2"`
+		Num3 int64  `json:"num3"`
+	}
+	for loop := true; loop; loop = false {
+		err = toolbox.MustQueryFromRequest(r, &req)
+		if err != nil {
+			break
+		}
+		logs.Debug("req=%+v", req)
+		switch req.Tag {
+		case "codeRunner_buildGo":
+			resp.PayLoad, err = rpc.BuildGo()
+		case "codeRunner_buildCpp":
+			resp.PayLoad, err = rpc.BuildCpp()
+		case "codeRunner_run":
+			resp.PayLoad, err = rpc.Run()
+		default:
+			err = fmt.Errorf("unexpect tag")
+		}
+	}
+	if err != nil {
+		logs.Warn("test interface failed: tag=%s params=%+v error=%v", req.Tag, req, err)
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}
+	responseJson(&w, resp)
+}
