@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"baseService"
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -16,6 +18,7 @@ import (
 
 	"../config"
 	"../rpc"
+	"errors"
 
 	"github.com/astaxie/beego/logs"
 )
@@ -402,6 +405,7 @@ func getServerLog(w http.ResponseWriter, r *http.Request) {
 func testRPCInterface(w http.ResponseWriter, r *http.Request) {
 	var err error
 	var resp respStruct
+	rpcResp := &baseService.CommomResp{}
 	var req struct {
 		Tag  string `json:"tag"`
 		Str1 string `json:"str1"`
@@ -411,6 +415,10 @@ func testRPCInterface(w http.ResponseWriter, r *http.Request) {
 		Num2 int64  `json:"num2"`
 		Num3 int64  `json:"num3"`
 	}
+	var runResult struct {
+		StdErr string `json:"stdErr"`
+		StdOut string `json:"stdOut"`
+	}
 	for loop := true; loop; loop = false {
 		err = toolbox.MustQueryFromRequest(r, &req)
 		if err != nil {
@@ -419,15 +427,32 @@ func testRPCInterface(w http.ResponseWriter, r *http.Request) {
 		logs.Debug("req=%+v", req)
 		switch req.Tag {
 		case "codeRunner_buildGo":
-			resp.PayLoad, err = rpc.BuildGo()
+			rpcResp, err = rpc.BuildGo(req.Str1, req.Str2)
 		case "codeRunner_buildCpp":
-			resp.PayLoad, err = rpc.BuildCpp()
+			rpcResp, err = rpc.BuildCpp(req.Str1, req.Str2)
 		case "codeRunner_run":
-			resp.PayLoad, err = rpc.Run()
+			rpcResp, err = rpc.Run(req.Str1, req.Str2, req.Str3)
 		default:
 			err = fmt.Errorf("unexpect tag")
+			break
 		}
+		if rpcResp.Status != 0 {
+			err = fmt.Errorf("%s return error: error=%v", rpcResp.Msg, err)
+			break
+		}
+		if rpcResp.Payload == nil {
+			err = errors.New("rpc response payload is null")
+			break
+		}
+		err = json.Unmarshal(rpcResp.Payload, &runResult)
+		if err != nil {
+			logs.Error("json unmarshal failed: error=%v", err)
+			break
+		}
+		logs.Info("runResult=%+v", runResult)
+		resp.PayLoad = runResult
 	}
+	resp.Msg = rpcResp.Msg // codeHash
 	if err != nil {
 		logs.Warn("test interface failed: tag=%s params=%+v error=%v", req.Tag, req, err)
 		resp.Status = -1

@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 
+	"baseService"
 	"codeRunner"
 
 	"github.com/apache/thrift/lib/go/thrift"
@@ -72,7 +73,7 @@ func NewCodeRunner(ctx context.Context) (client *codeRunner.CodeRunnerClient, er
 
 // ----------------------------
 
-func BuildGo() (interface{}, error) {
+func BuildGo(code, input string) (*baseService.CommomResp, error) {
 	ctx, cancel := GetDefaultContext()
 	defer cancel()
 	client, err := NewCodeRunner(ctx)
@@ -80,12 +81,12 @@ func BuildGo() (interface{}, error) {
 		logs.Error("new client fail: error=%v", err)
 		return nil, err
 	}
-	res, err := client.BuildGo(ctx)
+	res, err := client.BuildGo(ctx, code, input)
 	logs.Info("resp=%+v error=%v", res, err)
 	return res, err
 }
 
-func BuildCpp() (interface{}, error) {
+func BuildCpp(code, input string) (*baseService.CommomResp, error) {
 	ctx, cancel := GetDefaultContext()
 	defer cancel()
 	client, err := NewCodeRunner(ctx)
@@ -93,12 +94,12 @@ func BuildCpp() (interface{}, error) {
 		logs.Error("new client fail: error=%v", err)
 		return nil, err
 	}
-	res, err := client.BuildCpp(ctx)
+	res, err := client.BuildCpp(ctx, code, input)
 	logs.Info("resp=%+v error=%v", res, err)
 	return res, err
 }
 
-func Run() (interface{}, error) {
+func Run(codeType, hash, input string) (*baseService.CommomResp, error) {
 	ctx, cancel := GetDefaultContext()
 	defer cancel()
 	client, err := NewCodeRunner(ctx)
@@ -106,7 +107,7 @@ func Run() (interface{}, error) {
 		logs.Error("new client fail: error=%v", err)
 		return nil, err
 	}
-	res, err := client.Run(ctx)
+	res, err := client.Run(ctx, codeType, hash, input)
 	logs.Info("resp=%+v error=%v", res, err)
 	return res, err
 }
