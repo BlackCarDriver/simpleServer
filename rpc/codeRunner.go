@@ -99,6 +99,19 @@ func BuildCpp(code, input string) (*baseService.CommomResp, error) {
 	return res, err
 }
 
+func BuildC(code, input string) (*baseService.CommomResp, error) {
+	ctx, cancel := GetDefaultContext()
+	defer cancel()
+	client, err := NewCodeRunner(ctx)
+	if err != nil {
+		logs.Error("new client fail: error=%v", err)
+		return nil, err
+	}
+	res, err := client.BuildC(ctx, code, input)
+	logs.Info("resp=%+v error=%v", res, err)
+	return res, err
+}
+
 func Run(codeType, hash, input string) (*baseService.CommomResp, error) {
 	ctx, cancel := GetDefaultContext()
 	defer cancel()

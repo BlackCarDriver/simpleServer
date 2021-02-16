@@ -420,20 +420,29 @@ func testRPCInterface(w http.ResponseWriter, r *http.Request) {
 		StdOut string `json:"stdOut"`
 	}
 	for loop := true; loop; loop = false {
-		err = toolbox.MustQueryFromRequest(r, &req)
+		if r.Method == http.MethodGet {
+			err = fmt.Errorf("unexpect method: %s", r.Method)
+			break
+		}
+		decoder := json.NewDecoder(r.Body)
+		err = decoder.Decode(&req)
 		if err != nil {
 			break
 		}
-		logs.Debug("req=%+v", req)
 		switch req.Tag {
 		case "codeRunner_buildGo":
 			rpcResp, err = rpc.BuildGo(req.Str1, req.Str2)
 		case "codeRunner_buildCpp":
 			rpcResp, err = rpc.BuildCpp(req.Str1, req.Str2)
+		case "codeRunner_buildC":
+			rpcResp, err = rpc.BuildC(req.Str1, req.Str2)
 		case "codeRunner_run":
 			rpcResp, err = rpc.Run(req.Str1, req.Str2, req.Str3)
 		default:
 			err = fmt.Errorf("unexpect tag")
+			break
+		}
+		if err != nil {
 			break
 		}
 		if rpcResp.Status != 0 {
@@ -450,9 +459,9 @@ func testRPCInterface(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		logs.Info("runResult=%+v", runResult)
+		resp.Msg = rpcResp.Msg // codeHash
 		resp.PayLoad = runResult
 	}
-	resp.Msg = rpcResp.Msg // codeHash
 	if err != nil {
 		logs.Warn("test interface failed: tag=%s params=%+v error=%v", req.Tag, req, err)
 		resp.Status = -1
