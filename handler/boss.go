@@ -25,7 +25,7 @@ import (
 
 // boss管理后台前端
 func BossFontEndHandler(w http.ResponseWriter, r *http.Request) {
-	url := strings.TrimLeft(fmt.Sprintf("%s", r.URL.Path), "/boss")
+	url := strings.TrimPrefix(r.URL.Path, "/boss")
 	logs.Debug("boss font_end: url=%s", url)
 	if url == "" {
 		url = "index.html"

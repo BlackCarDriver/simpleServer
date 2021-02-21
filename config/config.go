@@ -19,14 +19,15 @@ type mailConfig struct {
 
 // 备注：目录路径配置,约定目录路径以/结尾
 type serverConfig struct {
-	AuthorityKey  string `xml:"authority_key"`   // 获取权限的访问路由
-	IsTest        bool   `xml:"is_test"`         // 是否测试环境
-	S2SSecret     string `xml:"s2s_secret"`      // s2s密钥
-	ServerURL     string `xml:"serverUrl"`       // 访问本服务的url(结尾没斜杠)
-	StaticPath    string `xml:"statis_path"`     // 存储静态文件的路径(斜杠结尾)
-	LogPath       string `xml:"log_path"`        // 日志存储的位置(斜杠结尾)
-	CloneBlogPath string `xml:"clone_blog_path"` // 克隆网站页面路径(斜杠结尾)
-	BossPath      string `xml:"boss_path"`       // 管理后台页面路径(斜杠结尾)
+	AuthorityKey   string `xml:"authority_key"`    // 获取权限的访问路由
+	IsTest         bool   `xml:"is_test"`          // 是否测试环境
+	S2SSecret      string `xml:"s2s_secret"`       // s2s密钥
+	ServerURL      string `xml:"serverUrl"`        // 访问本服务的url(结尾没斜杠)
+	StaticPath     string `xml:"statis_path"`      // 存储静态文件的路径(斜杠结尾)
+	LogPath        string `xml:"log_path"`         // 日志存储的位置(斜杠结尾)
+	CloneBlogPath  string `xml:"clone_blog_path"`  // 克隆网站页面路径(斜杠结尾)
+	BossPath       string `xml:"boss_path"`        // 管理后台页面路径(斜杠结尾)
+	CodeMasterPath string `xml:"code_master_path"` // codeMaster页面路径(斜杠结尾)
 }
 
 type databaseConfig struct {
@@ -57,6 +58,7 @@ func init() {
 	ServerConfig.StaticPath = strings.TrimRight(ServerConfig.StaticPath, "/") + "/"
 	ServerConfig.CloneBlogPath = strings.TrimRight(ServerConfig.CloneBlogPath, "/") + "/"
 	ServerConfig.BossPath = strings.TrimRight(ServerConfig.BossPath, "/") + "/"
+	ServerConfig.CodeMasterPath = strings.TrimRight(ServerConfig.CodeMasterPath, "/") + "/"
 	ServerConfig.ServerURL = strings.TrimRight(ServerConfig.ServerURL, "/")
 
 	logs.Info("MailConfig: %+v", MailConfig)

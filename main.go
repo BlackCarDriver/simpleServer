@@ -37,6 +37,7 @@ func main() {
 	muxer.HandleFunc("/registerS2S", rpc.RegisterServiceHandler)             // 注册RPC服务
 	muxer.HandleFunc("/blog/", blogHandler)                                  // 空壳博客
 	muxer.HandleFunc("/boss/", handler.BossFontEndHandler)                   // 管理后台前端
+	muxer.HandleFunc("/codeMaster/", handler.CodeMasterFontEndHandler)       // codeMaster前端
 	muxer.Handle("/bsapi/", MakeSafeHandler(handler.BossAPIHandler))         // 管理后台api
 	muxer.Handle("/callDriver/", MakeSafeHandler(handler.CallDriverHandler)) // callDriver应用
 	muxer.Handle("/static/", MakeSafeHandler(handler.StaticHandler))         // 静态文件存储服务
