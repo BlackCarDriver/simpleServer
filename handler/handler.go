@@ -1,14 +1,15 @@
 package handler
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"time"
-
 	"../config"
 	"../model"
 	tb "../toolbox"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
 
 	"github.com/astaxie/beego/logs"
 )
@@ -97,6 +98,33 @@ func NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	RecordRequest(r, "🚫")
 	w.WriteHeader(http.StatusNotFound)
 	http.ServeFile(w, r, "./source/hello.html")
+}
+
+// 返回浏览器标签图标
+func FaviconHandler(w http.ResponseWriter, r *http.Request) {
+	ref := r.Header.Get("Referer")
+	if ref == "" {
+		logs.Warn("unexpect icon for url: url=%s", r.URL)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	logs.Debug("ref=%s", ref)
+	URL, err := url.Parse(ref)
+	if err != nil {
+		logs.Warn("parse ref failed: ref=%s", ref)
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	app := strings.Trim(URL.Path, "/")
+	switch app {
+	case "codeMaster":
+		http.ServeFile(w, r, "./source/codeMaster.ico")
+	case "boss":
+		http.ServeFile(w, r, "./source/boss.ico")
+	default:
+		logs.Warn("unexpect icon for app: app=%s", app)
+	}
+	return
 }
 
 // ====================== commom =================================
