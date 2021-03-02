@@ -1,0 +1,71 @@
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>CallDriver</title>
+<script>
+
+    // 请求方法
+    async function myrequest(url){
+        let res = await fetch(url).then(resp=>{
+            if (resp.ok){
+                return resp.json();
+            }
+            throw new Error('bad request: ', reqp)
+        }).then(json=> {
+            return json
+        }).catch(err=>{
+            console.err(err)
+            return ""
+        });
+        return res
+    }
+    // 延迟一定时间后初始化
+    setTimeout(() => {
+      document.getElementById("sendDiv").style.display = "block"
+      document.getElementById("sendTab").className += " active"
+      startGetResponse(true)
+    }, 300);
+    </script>
+    <!-- ================================================================================================= -->
+    <!-- ================================================================================================= -->
+</head>
+<body>
+    <div style="display: inline-block;">
+    <h1 style="margin: 0;text-align: center;">Manage</h1>
+    <div>
+        <b>文件上传</b>
+        <form name="uploadfile" action="/manage/upload" method="post" enctype="multipart/form-data">
+            <input type="file" name="file">
+            <input type="submit">
+        </form>
+
+        <b>添加IP黑名单</b>
+        <form name="addBlackList" action="/manage/addBlackList" method="post">
+            <input type="checkbox" name="black" style="display: inline-block"> <span>Black?</span>
+            <input type="text" name="ip">
+            <input type="submit">
+        </form>
+
+    </div>
+    <div>
+        <b>相关链接</b>
+        <a class="mylink" href="/reqLog" target="null">reqLog</a>
+        <a class="mylink" href="/reqMsg" target="null">reqMsg</a>
+        <a class="mylink" href="/callDriver" target="null">callDriver Guest</a>
+        <a class="mylink" href="/callDriver/boss" target="null">callDriver Boss</a>
+        <a class="mylink" href="/manage/clearip" target="null">clear ip log</a>
+        <a class="mylink" href="/manage/checklist" target="null">check blackWhiteList</a>
+    </div>
+    </div>
+</body>
+
+<!-- ====================================================================================== -->
+<!-- ====================================================================================== -->
+<style>
+    body {font-family: Arial;background: #222;color: #34a3e6;}
+    input {display: block;}
+    .mylink {display: block;}
+</style>
+
+</html>

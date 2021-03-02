@@ -1,0 +1,22 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>404</title>
+<script>
+        run = (s) => {
+            let v = document.getElementById("car")
+            if (s > 20) return
+            if(v!=null) v.style.fontSize = s+"em"
+            setTimeout(() => {
+                s+=0.1
+                run(s)
+            }, 30)
+        }
+        run(1)
+</script> 
+</head>
+<body style="background-color: black;color: white;">
+    <h1>404 not found....</h1>
+    <p id="car" style="margin: 0;">🚔</p>
+</body>
+</html>
