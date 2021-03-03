@@ -26,7 +26,8 @@ func initMain() {
 		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s", "daily": true, "maxlines": 20000}`, config.ServerConfig.LogPath))
 		// logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
 	}
-	blogHandler = handler.CreateHandler(config.ServerConfig.CloneBlogPath, "bolg")
+	// blogHandler = handler.CreateAgentHandler(config.ServerConfig.CloneBlogPath, "bolg")
+	blogHandler = handler.CreateAssetsHandler("res/blog/", "bolg")
 }
 
 func main() {
@@ -36,8 +37,8 @@ func main() {
 	muxer.HandleFunc("/", defaultHandler)
 	muxer.HandleFunc("/favicon.ico", handler.FaviconHandler)
 	muxer.HandleFunc("/registerS2S", rpc.RegisterServiceHandler) // 注册RPC服务
-	// muxer.HandleFunc("/blog/", blogHandler)                                  // 空壳博客
-	muxer.HandleFunc("/blog/", handler.FackBlogHandler)                      // 空壳博客
+	muxer.HandleFunc("/blog/", blogHandler)                      // 空壳博客
+	// muxer.HandleFunc("/blog/", handler.FackBlogHandler)                      // 空壳博客
 	muxer.HandleFunc("/boss/", handler.BossFontEndHandler)                   // 管理后台前端
 	muxer.HandleFunc("/codeMaster/", handler.CodeMasterFontEndHandler)       // codeMaster前端
 	muxer.Handle("/bsapi/", MakeSafeHandler(handler.BossAPIHandler))         // 管理后台api

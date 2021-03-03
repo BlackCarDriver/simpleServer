@@ -62,9 +62,9 @@ func CloneAgent(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-// 创建一个反向代理处理器,(专门用于返回cloneAgent缓存下来的请求响应体)
+// 创建一个反向代理处理器,(专门用于返回cloneAgent缓存下来的请求响应体), 使用http.ServeFile()方法返回
 // fileRoot：缓存文件保存的根目录, rmPrefix: 根据访问URI寻找文件路径时去除的URL前缀,无需斜杠
-func CreateHandler(fileRoot, rmPrefix string) http.HandlerFunc {
+func CreateAgentHandler(fileRoot, rmPrefix string) http.HandlerFunc {
 	if !toolbox.CheckDirExist(fileRoot) {
 		logs.Emergency("fileRoot not exist: fileRoot=%s", fileRoot)
 	}
@@ -88,6 +88,30 @@ func CreateHandler(fileRoot, rmPrefix string) http.HandlerFunc {
 		}
 		logs.Debug("targetPath=%s", targetPath)
 		http.ServeFile(w, r, targetPath)
+	}
+}
+
+// 创建一个反向代理处理器, 使用assets方法返回经过gzip压缩静态文件
+// 最终访问的路径为 ${assetsRoot}${去除rmPrefix前缀的URI},assetsRoot应以斜杠结尾
+func CreateAssetsHandler(assetsRoot string, rmPrefix string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		URI := r.RequestURI
+		URI = strings.TrimLeft(URI, "/")
+		if rmPrefix != "" {
+			URI = strings.TrimLeft(URI, rmPrefix)
+			URI = strings.TrimLeft(URI, "/")
+		}
+		if URI == "" {
+			logs.Info("auto use index to save response")
+			URI = "index.html"
+		}
+		targetPath := assetsRoot + URI
+		// 若为api请求，则修改文件名
+		if strings.Contains(URI, "?") {
+			targetPath = assetsRoot + remakeURI(URI)
+		}
+		logs.Debug("targetPath=%s", targetPath)
+		assetsHandler(w, targetPath)
 	}
 }
 
@@ -119,7 +143,7 @@ func remakeURI(URI string) string {
 	}
 	path := URI[0:index]
 	path = strings.TrimLeft(path, "/")
-	path = strings.TrimLeft(path, "api")
+	path = strings.TrimLeft(path, "api/")
 	params := strings.TrimLeft(URI[index:], "?")
 	params = regexp.MustCompile(`[\/:*?"<>|]`).ReplaceAllString(params, "_")
 	return fmt.Sprintf("api/%s/%s.json", path, params)
