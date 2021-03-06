@@ -13,7 +13,9 @@ import (
 
 // 一些特定功能的处理器
 var (
-	blogHandler http.HandlerFunc
+	blogHandler        http.HandlerFunc
+	codeMasterHandler  http.HandlerFunc
+	bossFontEndHandler http.HandlerFunc
 )
 
 func initMain() {
@@ -26,8 +28,9 @@ func initMain() {
 		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s", "daily": true, "maxlines": 20000}`, config.ServerConfig.LogPath))
 		// logs.SetLevel(logs.LevelInformational) // 不打印debug级别日志
 	}
-	// blogHandler = handler.CreateAgentHandler(config.ServerConfig.CloneBlogPath, "bolg")
-	blogHandler = handler.CreateAssetsHandler("res/blog/", "bolg")
+	blogHandler = handler.CreateAgentHandler2("res/blog/", "bolg")
+	codeMasterHandler = handler.CreateAssetsHandler("res/codeMaster/", "codeMaster")
+	bossFontEndHandler = handler.CreateAssetsHandler("res/boss/", "boss")
 }
 
 func main() {
@@ -36,11 +39,10 @@ func main() {
 	muxer := http.NewServeMux()
 	muxer.HandleFunc("/", defaultHandler)
 	muxer.HandleFunc("/favicon.ico", handler.FaviconHandler)
-	muxer.HandleFunc("/registerS2S", rpc.RegisterServiceHandler) // 注册RPC服务
-	muxer.HandleFunc("/blog/", blogHandler)                      // 空壳博客
-	// muxer.HandleFunc("/blog/", handler.FackBlogHandler)                      // 空壳博客
-	muxer.HandleFunc("/boss/", handler.BossFontEndHandler)                   // 管理后台前端
-	muxer.HandleFunc("/codeMaster/", handler.CodeMasterFontEndHandler)       // codeMaster前端
+	muxer.HandleFunc("/registerS2S", rpc.RegisterServiceHandler)             // 注册RPC服务
+	muxer.HandleFunc("/blog/", blogHandler)                                  // 空壳博客
+	muxer.HandleFunc("/boss/", bossFontEndHandler)                           // 管理后台前端
+	muxer.HandleFunc("/codeMaster/", codeMasterHandler)                      // codeMaster前端
 	muxer.Handle("/bsapi/", MakeSafeHandler(handler.BossAPIHandler))         // 管理后台api
 	muxer.Handle("/callDriver/", MakeSafeHandler(handler.CallDriverHandler)) // callDriver应用
 	muxer.Handle("/static/", MakeSafeHandler(handler.StaticHandler))         // 静态文件存储服务

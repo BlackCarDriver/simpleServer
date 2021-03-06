@@ -3,5 +3,8 @@
 *.tmp
 *.xml
 config/server.xml
+assets/res/blog
+assets/res/codeMaster
+assets/res/boss
 bindata.go
 rpc/gen-go

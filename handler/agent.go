@@ -93,7 +93,7 @@ func CreateAgentHandler(fileRoot, rmPrefix string) http.HandlerFunc {
 
 // 创建一个反向代理处理器, 使用assets方法返回经过gzip压缩静态文件
 // 最终访问的路径为 ${assetsRoot}${去除rmPrefix前缀的URI},assetsRoot应以斜杠结尾
-func CreateAssetsHandler(assetsRoot string, rmPrefix string) http.HandlerFunc {
+func CreateAgentHandler2(assetsRoot string, rmPrefix string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		URI := r.RequestURI
 		URI = strings.TrimLeft(URI, "/")

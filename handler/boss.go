@@ -16,24 +16,25 @@ import (
 
 	"../toolbox"
 
+	"errors"
+
 	"../config"
 	"../rpc"
-	"errors"
 
 	"github.com/astaxie/beego/logs"
 )
 
 // boss管理后台前端
-func BossFontEndHandler(w http.ResponseWriter, r *http.Request) {
-	url := strings.TrimPrefix(r.URL.Path, "/boss")
-	logs.Debug("boss font_end: url=%s", url)
-	if url == "" {
-		url = "index.html"
-	}
-	targetPath := config.ServerConfig.BossPath + url
-	http.ServeFile(w, r, targetPath)
-	return
-}
+// func BossFontEndHandler(w http.ResponseWriter, r *http.Request) {
+// 	url := strings.TrimPrefix(r.URL.Path, "/boss")
+// 	logs.Debug("boss font_end: url=%s", url)
+// 	if url == "" {
+// 		url = "index.html"
+// 	}
+// 	targetPath := config.ServerConfig.BossPath + url
+// 	http.ServeFile(w, r, targetPath)
+// 	return
+// }
 
 // boss管理后台的请求全部经过这里
 func BossAPIHandler(w http.ResponseWriter, r *http.Request) {
