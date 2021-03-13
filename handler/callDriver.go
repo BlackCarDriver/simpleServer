@@ -31,7 +31,6 @@ type CmdType struct {
 
 const myName = "BlackCarDriver"
 
-var sendEmail = true // 控制是否发送邮件的开关之一
 
 // CallDriver应用请求全部经过这里
 func CallDriverHandler(w http.ResponseWriter, r *http.Request) {
@@ -97,8 +96,8 @@ func callDriverReceiveMsg(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		// 发送邮箱通知
-		if config.ServerConfig.IsTest || !sendEmail {
-			logs.Info("Skip send email: isTest=%s  sendEmail=%v", config.ServerConfig.IsTest, sendEmail)
+		if config.ServerConfig.IsTest || !sendCallDriverEmail {
+			logs.Info("Skip send email: isTest=%s  sendCallDriverEmail=%v", config.ServerConfig.IsTest, sendCallDriverEmail)
 			break
 		}
 		err = tb.SendToMySelf(req.Nick, req.Msg)
@@ -320,8 +319,8 @@ func callDriverSetMail(w http.ResponseWriter, r *http.Request) {
 			var sendOrNot bool
 			sendOrNot, err = strconv.ParseBool(req.Value)
 			if err == nil {
-				logs.Info("Email config change: sendEmail=%v", sendOrNot)
-				sendEmail = sendOrNot
+				logs.Info("Email config change: sendCallDriverEmail=%v", sendOrNot)
+				sendCallDriverEmail = sendOrNot
 			}
 
 		default:

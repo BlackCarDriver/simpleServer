@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net"
+	"os/exec"
 	"net/http"
 	"os"
 	"regexp"
@@ -23,18 +24,6 @@ import (
 
 	"github.com/astaxie/beego/logs"
 )
-
-// boss管理后台前端
-// func BossFontEndHandler(w http.ResponseWriter, r *http.Request) {
-// 	url := strings.TrimPrefix(r.URL.Path, "/boss")
-// 	logs.Debug("boss font_end: url=%s", url)
-// 	if url == "" {
-// 		url = "index.html"
-// 	}
-// 	targetPath := config.ServerConfig.BossPath + url
-// 	http.ServeFile(w, r, targetPath)
-// 	return
-// }
 
 // boss管理后台的请求全部经过这里
 func BossAPIHandler(w http.ResponseWriter, r *http.Request) {
@@ -53,6 +42,10 @@ func BossAPIHandler(w http.ResponseWriter, r *http.Request) {
 		ipWhitelistHandler(w, r)
 	case "bsapi/manage/ipWhiteList/ope":
 		ipWhitelistOpeHandler(w, r)
+	case "bsapi/manage/systemSetting/ope":
+		systemSettingHandler(w, r)
+	case "bsapi/manage/systemSetting/status":
+		getSystemStting(w, r)
 	case "bsapi/monitor/rpc/overview":
 		getRpcOverview(w, r)
 	case "bsapi/monitor/rpc/ope":
@@ -291,7 +284,78 @@ func ipWhitelistOpeHandler(w http.ResponseWriter, r *http.Request) {
 		logs.Info("ip whitelist updated: req=%+v", req)
 	}
 	if err != nil {
-		logs.Warn("handle ipwhitelist ope failed: error=%v req=%+v", err, req)
+		logs.Warn("handle ipwhitelist ope failed: error=%v url=%v", err, r.URL)
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}
+	responseJson(&w, resp)
+}
+
+// 服务端配置-开关设置: 获取当前配置
+func getSystemStting(w http.ResponseWriter, r *http.Request) {
+	var payload struct {
+		CallDriverEmail bool `json:"callDriverEmail"`
+		AlertEmail bool `json:"alertEmail"`
+	}
+
+	payload.CallDriverEmail = sendCallDriverEmail
+	payload.AlertEmail = sendAlertEmail
+
+	var resp = respStruct{
+		Status: 0,
+		Msg: "",
+		PayLoad: payload,
+	}
+	responseJson(&w, resp)
+}
+
+// 服务端配置-开关设置: 开关控制请求
+func systemSettingHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Tag string `json:"tag"`
+		Params string `json:"params"`
+	}
+	var resp respStruct
+	var err error
+	for loop:=true; loop; loop=false {
+		err = toolbox.MustQueryFromRequest(r, &req)
+		if err!=nil {
+			logs.Error("parse request failed: error=%v", err)
+			break
+		}
+		logs.Info("params=%+v", req)
+		switch req.Tag {
+		case "systemUpdate": // 更新和重启系统
+			cmd := exec.Command("bash", config.ServerConfig.RestartBashPath)
+			err = cmd.Run()
+			if err != nil {
+				logs.Error("Execute Command failed:" + err.Error())
+				return
+			}else{
+				logs.Info("exec success...")
+			}
+		case "callDriverEmail": // 更新配置参数sendCallDriverEmail
+			if req.Params == "true" {
+				sendCallDriverEmail = true
+			}else if req.Params == "false" {
+				sendCallDriverEmail = false
+			}else{
+				err = fmt.Errorf("unexpect params: params=%q", req.Params)
+			}
+		case "alertEmail":
+			if req.Params == "true" { // 更新配置参数sendAlertEmail
+				sendAlertEmail = true
+			}else if req.Params == "false" {
+				sendAlertEmail = false
+			}else{
+				err = fmt.Errorf("unexpect params: params=%q", req.Params)
+			}
+		default:
+			err = fmt.Errorf("unexpect params: req=%+v", req)
+		}
+	}
+	if err != nil {
+		logs.Error("handle system setting request faield: error=%v url=%+v", err, r.URL)
 		resp.Status = -1
 		resp.Msg = fmt.Sprint(err)
 	}

@@ -18,6 +18,12 @@ import (
 
 var IpMonitor *tb.IPMonitor
 
+// 一些影响系统行为的配置变量
+var (
+	sendCallDriverEmail = true // 是否接收callDriver应用的邮件
+	sendAlertEmail = false // 是否发送告警通知 (暂时未用)
+)
+
 func init() {
 	// 初始化ip监控
 	IpMonitor = tb.NewIpMonitor()

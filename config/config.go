@@ -25,6 +25,7 @@ type serverConfig struct {
 	ServerURL    string `xml:"serverUrl"`     // 访问本服务的url(结尾没斜杠)
 	StaticPath   string `xml:"statis_path"`   // 存储静态文件的路径(斜杠结尾)
 	LogPath      string `xml:"log_path"`      // 日志存储的位置(斜杠结尾)
+	RestartBashPath string `xml:"restart_bash_path"` // 重启程序的脚本路径
 }
 
 type databaseConfig struct {
