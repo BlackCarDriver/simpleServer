@@ -44,6 +44,7 @@ func main() {
 	muxer.HandleFunc("/boss/", bossFontEndHandler)                           // 管理后台前端
 	muxer.HandleFunc("/codeMaster/", codeMasterHandler)                      // codeMaster前端
 	muxer.Handle("/bsapi/", MakeSafeHandler(handler.BossAPIHandler))         // 管理后台api
+	muxer.Handle("/cmapi/", MakeSafeHandler(handler.CodeMasterAPIHandler))   // codeMaster api
 	muxer.Handle("/callDriver/", MakeSafeHandler(handler.CallDriverHandler)) // callDriver应用
 	muxer.Handle("/static/", MakeSafeHandler(handler.StaticHandler))         // 静态文件存储服务
 	muxer.Handle("/manage/", MakeSafeHandler(handler.ManageHandler))

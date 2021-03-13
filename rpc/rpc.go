@@ -168,3 +168,39 @@ func SetNodeStatus(s2sName string, addr string, status string) error {
 	logs.Info("update member status success: s2sName=%s addr=%s", s2sName, addr)
 	return nil
 }
+
+// 生成所有节点的节点描述，用于持久化节点信息
+func GetAllNodeMsg() []RegisterPackage {
+	res := make([]RegisterPackage, 0)
+	overViewMsg := GetRpcOverview()
+	if len(overViewMsg) == 0 {
+		return res
+	}
+	for _, service := range overViewMsg {
+		for _, member := range service.Members {
+			tmpDesc := RegisterPackage{
+				Name:   service.Name,
+				URL:    member.URL,
+				Tag:    member.Tag,
+				Ope:    "register",
+				S2sKey: getS2sKey(service.Name, member.URL),
+			}
+			res = append(res, tmpDesc)
+		}
+	}
+	logs.Info("res=%+v", res)
+	return res
+}
+
+// 根据之前保存的节点信息还原节点状态
+func RestoreAllNode(nodes []RegisterPackage) {
+	logs.Info("RestoreAllNode called: nodes numbers=%d", len(nodes))
+	for _, node := range nodes {
+		err := s2sMaster.Register(node)
+		if err != nil {
+			logs.Error("restore node failed: error=%v node=%+v", err, node)
+		} else {
+			logs.Info("restore node success: node=%+v", node)
+		}
+	}
+}

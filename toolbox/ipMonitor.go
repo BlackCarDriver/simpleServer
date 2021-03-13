@@ -34,6 +34,7 @@ func (m *IPMonitor) UpdateAllIpTag(newIpTag map[string]string) {
 		logs.Error("newIpTag is nil")
 		return
 	}
+	logs.Info("update IP tags success: ipTags=%+v", newIpTag)
 	m.ipTag = newIpTag
 }
 

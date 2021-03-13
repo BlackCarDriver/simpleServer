@@ -29,7 +29,7 @@ type RegisterPackage struct {
 	URL    string `json:"url"`
 	S2sKey string `json:"s2sKey"`
 	Tag    string `json:"tag"` // 节点备注
-	Ope    string `json:"ope"` // 操作类型
+	Ope    string `json:"ope"` // 操作类型[register|unregister]
 }
 
 // 验证节点信息
@@ -37,9 +37,7 @@ func (r *RegisterPackage) Check() error {
 	if r.URL == "" || r.Name == "" {
 		return errors.New("empty url or name or ope...")
 	}
-	md5Ctx := md5.New()
-	md5Ctx.Write([]byte(config.ServerConfig.S2SSecret + r.Name + r.URL))
-	md5Key := hex.EncodeToString(md5Ctx.Sum(nil))
+	md5Key := getS2sKey(r.Name, r.URL)
 	if md5Key != r.S2sKey {
 		logs.Info("s2s key not right")
 		logs.Debug("expect key=%s", md5Key)
@@ -47,6 +45,13 @@ func (r *RegisterPackage) Check() error {
 	}
 	logs.Info("check s2s key pass")
 	return nil
+}
+
+// 计算s2sKey
+func getS2sKey(name, url string) string {
+	md5Ctx := md5.New()
+	md5Ctx.Write([]byte(config.ServerConfig.S2SSecret + name + url))
+	return hex.EncodeToString(md5Ctx.Sum(nil))
 }
 
 // -------------- 节点 --------------

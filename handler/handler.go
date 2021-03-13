@@ -1,15 +1,17 @@
 package handler
 
 import (
-	"../config"
-	"../model"
-	tb "../toolbox"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"../config"
+	"../model"
+	"../rpc"
+	tb "../toolbox"
 
 	"github.com/astaxie/beego/logs"
 )
@@ -20,18 +22,32 @@ func init() {
 	// 初始化ip监控
 	IpMonitor = tb.NewIpMonitor()
 
-	// 从mongo中读取旧的标记记录，同时开启协程来定期持久化ip标记数据
 	if !config.ServerConfig.IsTest {
+		// 从mongo中读取旧的标记记录，同时开启协程来定期持久化ip标记数据
 		oldTags := make(map[string]string)
 		err := model.GetUtilData("ipTag", &oldTags)
 		if err != nil {
 			logs.Error("init ipTag failed: error=%v", err)
+		} else {
+			IpMonitor.UpdateAllIpTag(oldTags)
 		}
-		IpMonitor.UpdateAllIpTag(oldTags)
+
+		// 从mongo读取RPC服务节点记录，还原上次记录的状态
+		rpcNodes := make([]rpc.RegisterPackage, 0)
+		err = model.GetUtilData("rpcNodes", &rpcNodes)
+		if err != nil {
+			logs.Error("init rpcNode failed: error=%v", err)
+		} else {
+			go rpc.RestoreAllNode(rpcNodes)
+		}
+
+		// 定期更新ip标记数据和RPC服务状态
 		go func() {
-			for _ = range time.NewTicker(10 * time.Minute).C {
+			for range time.NewTicker(10 * time.Minute).C {
 				err := model.UpdateUtilData("ipTag", IpMonitor.GetIpTag())
 				logs.Debug("update ipTag result: error=%v", err)
+				err = model.UpdateUtilData("rpcNodes", rpc.GetAllNodeMsg())
+				logs.Debug("update rpcNodes result: error=%v", err)
 			}
 		}()
 	}
