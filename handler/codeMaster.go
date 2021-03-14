@@ -19,6 +19,8 @@ func CodeMasterAPIHandler(w http.ResponseWriter, r *http.Request) {
 	switch uri {
 	case "cmapi/createCode/debug":
 		codeDebug(w, r)
+	case "cmapi/createCode/submit":
+		codeSubmitHandler(w, r)
 	default:
 		logs.Warn("unexpect uri: uri=%s", uri)
 	}
@@ -86,6 +88,42 @@ func codeDebug(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		resp.PayLoad = runResult
+	}
+	if err != nil {
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}
+	responseJson(&w, resp)
+}
+
+// 提交的作品
+type SubmitCode struct {
+	Title string `json:"title"` 
+	CType int `json:"ctype"` // 作品类型 [0-其他,1-生活问题,2-数据结构,3-程序开发,4-趣味恶搞]
+	Language string `json:"language"`
+	Author string `json:"author"`
+	TagStr string `json:"tagStr"`
+	Desc string `json:"desc"` // 简介
+	Detail string `json:"detail"`
+	Code string `json:"code"`
+	DemoInput string `json:"demoInput"`
+	DemoOutput string `json:"demoOuput"`
+	Timestamp int64 `json:"timestamp"`
+}
+
+// 处理作品提交post请求
+func codeSubmitHandler(w http.ResponseWriter, r *http.Request) {
+	var work SubmitCode
+	var err error
+	var resp respStruct
+	for loop:=true; loop; loop=false {
+		decoder := json.NewDecoder(r.Body)
+		err = decoder.Decode(&work)
+		if err != nil {
+			logs.Error("parse params failed: error=%v", err)
+			break
+		}
+		logs.Debug("work=%+v", work)
 	}
 	if err != nil {
 		resp.Status = -1
