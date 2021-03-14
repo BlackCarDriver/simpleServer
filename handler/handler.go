@@ -23,8 +23,15 @@ var (
 	sendCallDriverEmail = true // 是否接收callDriver应用的邮件
 	sendAlertEmail = false // 是否发送告警通知 (暂时未用)
 )
+// 一些信息
+var (
+	serverStartTime int64 // 程序启动时间
+)
+
 
 func init() {
+	serverStartTime = time.Now().Unix()
+
 	// 初始化ip监控
 	IpMonitor = tb.NewIpMonitor()
 
@@ -119,7 +126,7 @@ func AddIpToWhiteList(w http.ResponseWriter, r *http.Request) {
 func NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	RecordRequest(r, "🚫")
 	w.WriteHeader(http.StatusNotFound)
-	http.ServeFile(w, r, "./source/hello.html")
+	assetsHandler(w, "res/html/hello.html")
 }
 
 // 返回浏览器标签图标
@@ -140,9 +147,9 @@ func FaviconHandler(w http.ResponseWriter, r *http.Request) {
 	app := strings.Trim(URL.Path, "/")
 	switch app {
 	case "codeMaster":
-		http.ServeFile(w, r, "./source/codeMaster.ico")
+		assetsHandler(w, "res/icon/codeMaster.ico")
 	case "boss":
-		http.ServeFile(w, r, "./source/boss.ico")
+		assetsHandler(w, "res/icon/boss.ico")
 	default:
 		logs.Warn("unexpect icon for app: app=%s", app)
 	}

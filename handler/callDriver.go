@@ -58,7 +58,7 @@ func CallDriverHandler(w http.ResponseWriter, r *http.Request) {
 
 func CallDriverHtml(w http.ResponseWriter, r *http.Request) {
 	RecordRequest(r, "🚓")
-	http.ServeFile(w, r, "./source/callDriverIndex.html")
+	assetsHandler(w, "res/html/callDriverIndex.html")
 }
 
 // 接受来自callDriver应用的消息，保存到数据库并发送通知邮件
@@ -201,7 +201,7 @@ func callDriverBossHtml(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotAcceptable)
 		return
 	}
-	http.ServeFile(w, r, "./source/callDriverBoss.html")
+	assetsHandler(w, "res/html/callDriverBoss.html")
 }
 
 // Boss回复消息

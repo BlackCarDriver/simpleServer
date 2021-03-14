@@ -41,7 +41,7 @@ func ManageHandler(w http.ResponseWriter, r *http.Request) {
 
 // 管理页面
 func manageHtml(w http.ResponseWriter, r *http.Request) {
-	http.ServeFile(w, r, "./source/mange.html")
+	assetsHandler(w, "res/html/mange.html")
 }
 
 // 接收文件并保存，名字不变

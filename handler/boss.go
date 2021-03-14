@@ -296,10 +296,12 @@ func getSystemStting(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
 		CallDriverEmail bool `json:"callDriverEmail"`
 		AlertEmail bool `json:"alertEmail"`
+		ServerStartTime int64 `json:"serverStartTime"`
 	}
 
 	payload.CallDriverEmail = sendCallDriverEmail
 	payload.AlertEmail = sendAlertEmail
+	payload.ServerStartTime = serverStartTime
 
 	var resp = respStruct{
 		Status: 0,
