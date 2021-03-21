@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
+	"../model"
 	"../rpc"
+	"../toolbox"
 	"github.com/astaxie/beego/logs"
 )
 
@@ -21,6 +24,8 @@ func CodeMasterAPIHandler(w http.ResponseWriter, r *http.Request) {
 		codeDebug(w, r)
 	case "cmapi/createCode/submit":
 		codeSubmitHandler(w, r)
+	case "cmapi/home/getAllWorks":
+		getAllWorksHandler(w, r)
 	default:
 		logs.Warn("unexpect uri: uri=%s", uri)
 	}
@@ -96,27 +101,12 @@ func codeDebug(w http.ResponseWriter, r *http.Request) {
 	responseJson(&w, resp)
 }
 
-// 提交的作品
-type SubmitCode struct {
-	Title string `json:"title"` 
-	CType int `json:"ctype"` // 作品类型 [0-其他,1-生活问题,2-数据结构,3-程序开发,4-趣味恶搞]
-	Language string `json:"language"`
-	Author string `json:"author"`
-	TagStr string `json:"tagStr"`
-	Desc string `json:"desc"` // 简介
-	Detail string `json:"detail"`
-	Code string `json:"code"`
-	DemoInput string `json:"demoInput"`
-	DemoOutput string `json:"demoOuput"`
-	Timestamp int64 `json:"timestamp"`
-}
-
 // 处理作品提交post请求
 func codeSubmitHandler(w http.ResponseWriter, r *http.Request) {
-	var work SubmitCode
+	var work model.CodeMasterWork
 	var err error
 	var resp respStruct
-	for loop:=true; loop; loop=false {
+	for loop := true; loop; loop = false {
 		decoder := json.NewDecoder(r.Body)
 		err = decoder.Decode(&work)
 		if err != nil {
@@ -124,6 +114,114 @@ func codeSubmitHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		logs.Debug("work=%+v", work)
+		// 检查提交字段是否完整和有误
+		if work.Language != "CPP" && work.Language != "C" && work.Language != "GO" {
+			err = fmt.Errorf("unexpect params: language=%q", work.Language)
+			break
+		}
+		if work.Title == "" || len(work.Title) > 80 {
+			err = fmt.Errorf("unexpect params: title=%q", work.Title)
+			break
+		}
+		if work.Author == "" || len(work.Author) > 80 {
+			err = fmt.Errorf("unexpect params: author=%q", work.Author)
+			break
+		}
+		if work.CType < 0 || work.CType > 4 {
+			err = fmt.Errorf("unexpect params: ctype=%d", work.CType)
+			break
+		}
+		if len(work.TagStr) > 120 {
+			err = fmt.Errorf("unexpect params: tagStr=%q", work.TagStr)
+			break
+		}
+		if len(work.InputDesc) > 1200 {
+			err = fmt.Errorf("unexpect params: inputDesc=%q", work.InputDesc)
+			break
+		}
+		if len(work.DemoInput) > 16000 {
+			err = fmt.Errorf("unexpect params: DemoInput=%q", work.DemoInput)
+			break
+		}
+		if len(work.DemoOutput) > 16000 {
+			err = fmt.Errorf("unexpect params: demoOuput=%q", work.DemoOutput)
+			break
+		}
+		if len(work.Code) > 50000 {
+			err = fmt.Errorf("unexpect params: code=%q", work.Code)
+			break
+		}
+		if len(work.Desc) > 800 || work.Desc == "" {
+			err = fmt.Errorf("unexpect params: code=%q", work.Code)
+			break
+		}
+		if len(work.Detail) > 80000 {
+			err = fmt.Errorf("unexpect params: Detail=%q", work.Detail)
+			break
+		}
+		if len(work.CoverURL) > 800 || work.CoverURL == "" {
+			err = fmt.Errorf("unexpect params: coverUrl=%q", work.CoverURL)
+			break
+		}
+
+		// 设置默认值
+		work.Timestamp = time.Now().Unix()
+		work.Score = 30
+		work.ID = fmt.Sprintf("%d%s", time.Now().Unix(), toolbox.GetRandomString(2))
+
+		// 保存到数据库
+		err = model.InsertCodeMasterWork(&work)
+		if err != nil {
+			logs.Error("save work failed: error=%v work=%+v", err, work)
+			break
+		}
+		logs.Info("save work success")
+	}
+	if err != nil {
+		logs.Warn("upload codeMaster work failed: error=%v work=%+v", err, work)
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}
+	responseJson(&w, resp)
+}
+
+// 查询作品列表
+func getAllWorksHandler(w http.ResponseWriter, r *http.Request) {
+	var resp respStruct
+	type payloadStruct struct {
+		ID        string `json:"id"`
+		Title     string `json:"title"`
+		CType     int    `json:"ctype"`
+		Author    string `json:"author"`
+		TagStr    string `json:"tagStr"`
+		Desc      string `json:"desc"`
+		CoverURL  string `json:"coverUrl"`
+		Timestamp int64  `json:"timestamp"`
+		Score     int    `json:"score"`
+	}
+	payload := make([]payloadStruct, 0)
+	var allWorks []*model.CodeMasterWork
+	var err error
+	for loop := true; loop; loop = false {
+		allWorks, err = model.GetAllCodeMasterWork()
+		if err != nil {
+			break
+		}
+		for _, v := range allWorks {
+			payload = append(payload, payloadStruct{
+				ID:        v.ID,
+				Title:     v.Title,
+				CType:     v.CType,
+				Author:    v.Author,
+				TagStr:    v.TagStr,
+				Desc:      v.Desc,
+				CoverURL:  v.CoverURL,
+				Timestamp: v.Timestamp,
+				Score:     v.Score,
+			})
+		}
+		logs.Info("query all works success, len=%d", len(payload))
+		resp.PayLoad = payload
 	}
 	if err != nil {
 		resp.Status = -1

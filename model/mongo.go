@@ -307,3 +307,62 @@ func FindAllCallDriverMessage() (history []CallDriverChat, err error) {
 	logs.Debug("find result: collection=%s err=%v history.len=%d", CollectCallDriverMsg, err, len(history))
 	return history, err
 }
+
+// =============== CodeMaster ==================
+
+// 记录用户提交的程序作品
+func InsertCodeMasterWork(work *CodeMasterWork) (err error) {
+	if err = mongoBlocker(); err != nil {
+		logs.Error("%v", err)
+		return err
+	}
+	for loop := true; loop; loop = false {
+		if work == nil {
+			err = errors.New("unexpect params")
+			break
+		}
+		collection := database.C(CollectCodeMasterWorks)
+		if collection == nil {
+			err = fmt.Errorf("connect to collection fail: collection=%s", CollectCodeMasterWorks)
+			break
+		}
+		err = collection.Insert(*work)
+		if err != nil {
+			break
+		}
+		logs.Info("save work success: work=%+v", work)
+	}
+	if err != nil {
+		logs.Error("save work failed: error=%v work=%+v", err, work)
+	}
+	return err
+}
+
+// 查询已有的程序作品的简单信息
+func GetAllCodeMasterWork() (works []*CodeMasterWork, err error) {
+	works = make([]*CodeMasterWork, 0)
+	if err = mongoBlocker(); err != nil {
+		logs.Error("%v", err)
+		return works, err
+	}
+	works = make([]*CodeMasterWork, 0)
+	for loop := true; loop; loop = false {
+		collection := database.C(CollectCodeMasterWorks)
+		query := collection.Find(bson.M{"status": 0})
+		if query == nil {
+			logs.Warning("no works found...")
+			break
+		}
+		err = query.All(&works)
+		if err != nil {
+			logs.Error("query data failed: error=%v", err)
+			break
+		}
+		logs.Info("get all works success: len=%d", len(works))
+	}
+
+	if err != nil {
+		logs.Error("get works failed: error=%+v", err)
+	}
+	return works, err
+}
