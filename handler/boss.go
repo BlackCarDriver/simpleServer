@@ -9,9 +9,9 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"net"
-	"os/exec"
 	"net/http"
 	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 
@@ -294,8 +294,8 @@ func ipWhitelistOpeHandler(w http.ResponseWriter, r *http.Request) {
 // 服务端配置-开关设置: 获取当前配置
 func getSystemStting(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
-		CallDriverEmail bool `json:"callDriverEmail"`
-		AlertEmail bool `json:"alertEmail"`
+		CallDriverEmail bool  `json:"callDriverEmail"`
+		AlertEmail      bool  `json:"alertEmail"`
 		ServerStartTime int64 `json:"serverStartTime"`
 	}
 
@@ -304,8 +304,8 @@ func getSystemStting(w http.ResponseWriter, r *http.Request) {
 	payload.ServerStartTime = serverStartTime
 
 	var resp = respStruct{
-		Status: 0,
-		Msg: "",
+		Status:  0,
+		Msg:     "",
 		PayLoad: payload,
 	}
 	responseJson(&w, resp)
@@ -314,14 +314,14 @@ func getSystemStting(w http.ResponseWriter, r *http.Request) {
 // 服务端配置-开关设置: 开关控制请求
 func systemSettingHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Tag string `json:"tag"`
+		Tag    string `json:"tag"`
 		Params string `json:"params"`
 	}
 	var resp respStruct
 	var err error
-	for loop:=true; loop; loop=false {
+	for loop := true; loop; loop = false {
 		err = toolbox.MustQueryFromRequest(r, &req)
-		if err!=nil {
+		if err != nil {
 			logs.Error("parse request failed: error=%v", err)
 			break
 		}
@@ -333,23 +333,23 @@ func systemSettingHandler(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				logs.Error("Execute Command failed:" + err.Error())
 				return
-			}else{
+			} else {
 				logs.Info("exec success...")
 			}
 		case "callDriverEmail": // 更新配置参数sendCallDriverEmail
 			if req.Params == "true" {
 				sendCallDriverEmail = true
-			}else if req.Params == "false" {
+			} else if req.Params == "false" {
 				sendCallDriverEmail = false
-			}else{
+			} else {
 				err = fmt.Errorf("unexpect params: params=%q", req.Params)
 			}
 		case "alertEmail":
 			if req.Params == "true" { // 更新配置参数sendAlertEmail
 				sendAlertEmail = true
-			}else if req.Params == "false" {
+			} else if req.Params == "false" {
 				sendAlertEmail = false
-			}else{
+			} else {
 				err = fmt.Errorf("unexpect params: params=%q", req.Params)
 			}
 		default:

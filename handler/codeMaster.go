@@ -26,6 +26,8 @@ func CodeMasterAPIHandler(w http.ResponseWriter, r *http.Request) {
 		codeSubmitHandler(w, r)
 	case "cmapi/home/getAllWorks":
 		getAllWorksHandler(w, r)
+	case "cmapi/codeDetail/getDetailByID":
+		getCodeDetail(w, r)
 	default:
 		logs.Warn("unexpect uri: uri=%s", uri)
 	}
@@ -167,7 +169,7 @@ func codeSubmitHandler(w http.ResponseWriter, r *http.Request) {
 		// 设置默认值
 		work.Timestamp = time.Now().Unix()
 		work.Score = 30
-		work.ID = fmt.Sprintf("%d%s", time.Now().Unix(), toolbox.GetRandomString(2))
+		work.ID = fmt.Sprintf("%d_%s", time.Now().Unix(), toolbox.GetRandomString(2))
 
 		// 保存到数据库
 		err = model.InsertCodeMasterWork(&work)
@@ -222,6 +224,135 @@ func getAllWorksHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		logs.Info("query all works success, len=%d", len(payload))
 		resp.PayLoad = payload
+	}
+	if err != nil {
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}
+	responseJson(&w, resp)
+}
+
+// 查询作品详细信息
+func getCodeDetail(w http.ResponseWriter, r *http.Request) {
+	var params struct {
+		ID string `json:"id"`
+	}
+	var resp respStruct
+	var err error
+	for loop := true; loop; loop = false {
+		err = toolbox.MustQueryFromRequest(r, &params)
+		if err != nil {
+			logs.Error("parse params failed: error=%v", err)
+			break
+		}
+
+		// 检查参数
+		if params.ID == "" {
+			logs.Warning("unexpect params: params=%+v", params)
+			err = fmt.Errorf("unexpect params: %+v", params)
+			break
+		}
+		var detail *model.CodeMasterWork
+		detail, err = model.GetCodeDetailByID(params.ID)
+		if err != nil {
+			logs.Warn("get detail failed: error=%v params=%+v", err, params)
+			break
+		}
+		resp.PayLoad = detail
+		logs.Info("get detail success: params=%+v", params)
+	}
+	if err != nil {
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}
+	responseJson(&w, resp)
+}
+
+// 提交评论
+func submitRecommend(w http.ResponseWriter, r *http.Request) {
+	var params struct {
+		WorkID string `json:"workId"`
+		Author string `json:"author"`
+		Conent string `json:"conent"`
+		ImgSrc string `json:"imgSrc"`
+	}
+	var resp respStruct
+	var err error
+	for loop := true; loop; loop = false {
+		err = toolbox.MustQueryFromRequest(r, &params)
+		if err != nil {
+			logs.Error("parse params failed: error=%v", err)
+			break
+		}
+
+		// 检查参数
+		if params.WorkID == "" || params.Author == "" || params.Conent == "" {
+			logs.Warning("unexpect params: params=%+v", params)
+			err = fmt.Errorf("unexpect params: %+v", params)
+			break
+		}
+		// 获取旧评论列表并生成新列表
+		var commentData *model.CommendList
+		commentData, err = model.GetCommentListByWorkID(params.WorkID)
+		if err != nil {
+			logs.Error("get old comment list failed: error=%v params=%v", err, params)
+			break
+		}
+		if len(commentData.Comments) >= 100 { // 最多保存100条评论
+			logs.Warn("commentList too long, give up insert: params=%+v", params)
+			err = errors.New("the commentList of it works is too long")
+			break
+		}
+		commentData.Comments = append(commentData.Comments, &model.Comment{
+			Timestamp: time.Now().Unix(),
+			ImgSrc:    params.ImgSrc,
+			Desc:      params.Conent,
+			Author:    params.Author,
+		})
+
+		// 更新数据库
+		err = model.UpdateCommentList(commentData)
+		if err != nil {
+			logs.Error("add comment failed: eror=%v params=%+v", err, params)
+			break
+		}
+		logs.Info("add new comment success: params=%+v", params)
+	}
+	if err != nil {
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}
+	responseJson(&w, resp)
+}
+
+// 获取评论列表
+func getRecommend(w http.ResponseWriter, r *http.Request) {
+	var params struct {
+		WorkID string `json:"workId"`
+	}
+	var resp respStruct
+	var err error
+	for loop := true; loop; loop = false {
+		err = toolbox.MustQueryFromRequest(r, &params)
+		if err != nil {
+			logs.Error("parse params failed: error=%v", err)
+			break
+		}
+
+		// 检查参数
+		if params.WorkID == "" {
+			logs.Warning("unexpect params: params=%+v", params)
+			err = fmt.Errorf("unexpect params: %+v", params)
+			break
+		}
+		var commemtList *model.CommendList
+		commemtList, err = model.GetCommentListByWorkID(params.WorkID)
+		if err != nil {
+			logs.Warn("get commemtList failed: error=%v params=%+v", err, params)
+			break
+		}
+		resp.PayLoad = commemtList
+		logs.Info("get commemtList success: params=%+v", params)
 	}
 	if err != nil {
 		resp.Status = -1

@@ -9,10 +9,11 @@ import (
 
 // mongoDB 相关常量
 const (
-	CollectUploadFile      = "upload_file"      // 文件暂存服务记录的文件信息
-	CollectCallDriverMsg   = "call_driver_msg"  //callDriver应用的聊条记录
-	CollectUtil            = "util"             // 杂项信息,约定使用UtilStruct作为数据项结构
-	CollectCodeMasterWorks = "code_master_work" // codeMaster应用程序作品
+	CollectUploadFile      = "upload_file"         // 文件暂存服务记录的文件信息
+	CollectCallDriverMsg   = "call_driver_msg"     //callDriver应用的聊条记录
+	CollectUtil            = "util"                // 杂项信息,约定使用UtilStruct作为数据项结构
+	CollectCodeMasterWorks = "code_master_work"    // codeMaster应用程序作品
+	CollectCodeComment     = "code_master_comment" // codeMaster作品评论
 )
 
 var (
@@ -61,7 +62,7 @@ type CallDriverChat = struct {
 
 // codeMaster 程序作品
 type CodeMasterWork struct {
-	ID         string `json:"id"`
+	ID         string `json:"id" bson:"_id"`
 	Title      string `json:"title"`
 	CType      int    `json:"ctype"`    // 作品类型 [0-其他,1-生活问题,2-数据结构,3-程序开发,4-趣味恶搞]
 	Language   string `json:"language"` // 编程语言 [C++\C\GO]
@@ -77,4 +78,18 @@ type CodeMasterWork struct {
 	Timestamp  int64  `json:"timestamp"`
 	Score      int    `json:"score"` // 评分，满分为50分
 	Status     int    `json:"status"`
+}
+
+// codeMaster 单条评论
+type Comment struct {
+	Author    string `json:"author"`
+	ImgSrc    string `json:"imgSrc"`
+	Desc      string `json:"desc"` // 评论内容
+	Timestamp int64  `json:"timestamp"`
+}
+
+// codeMaster作品评论列表
+type CommendList struct {
+	WorkID   string     `json:"workId"` // 作品的id
+	Comments []*Comment `json:"comments"`
 }

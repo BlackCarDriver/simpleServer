@@ -366,3 +366,72 @@ func GetAllCodeMasterWork() (works []*CodeMasterWork, err error) {
 	}
 	return works, err
 }
+
+// 根据ID查询作品的详细信息
+func GetCodeDetailByID(ID string) (works *CodeMasterWork, err error) {
+	if err = mongoBlocker(); err != nil {
+		logs.Error("%v", err)
+		return works, err
+	}
+	for loop := true; loop; loop = false {
+		collection := database.C(CollectCodeMasterWorks)
+		err = collection.FindId(ID).One(&works)
+		if err == mgo.ErrNotFound {
+			logs.Info("code not found: id=%d", ID)
+			return nil, err
+		}
+		if err != nil {
+			logs.Error("find code failed: error=%v id=%d", err, ID)
+			return nil, err
+		}
+		logs.Info("get code success")
+	}
+	return works, nil
+}
+
+// 根据作品id查询评论列表
+func GetCommentListByWorkID(workID string) (commentList *CommendList, err error) {
+	if err = mongoBlocker(); err != nil {
+		logs.Error("%v", err)
+		return nil, err
+	}
+	for loop := true; loop; loop = false {
+		collection := database.C(CollectCodeComment)
+		err = collection.Find(bson.M{"workId": workID}).One(&commentList)
+		if err == mgo.ErrNotFound {
+			logs.Info("no commentList: workID=%d", workID)
+			commentList = &CommendList{
+				WorkID:   workID,
+				Comments: make([]Comment, 0),
+			}
+			return nil, err
+		}
+		if err != nil {
+			logs.Error("find commentList failed: error=%v workID=%d", err, workID)
+			return nil, err
+		}
+		logs.Info("get commentList success")
+	}
+	return commentList, nil
+}
+
+// 更新作品评论列表
+func UpdateCommentList(commentList *CommendList) (err error) {
+	if err = mongoBlocker(); err != nil {
+		logs.Error("%v", err)
+		return err
+	}
+	if commentList == nil || commentList.WorkID == "" || commentList.Comments == nil {
+		logs.Warning("unexpect params: workID=%s commentList=%+v", commentList.WorkID, commentList)
+		return errors.New("unexpect params")
+	}
+	for loop := true; loop; loop = false {
+		collection := database.C(CollectCodeComment)
+		_, err = collection.Upsert(bson.M{"workId": commentList.WorkID}, *commentList)
+		if err != nil {
+			logs.Error("upsert commentList failed: error=%v commentList=%+v", err, commentList)
+		}
+		logs.Info("upsert commentList success, workID=%d", commentList.WorkID)
+	}
+	return nil
+}
