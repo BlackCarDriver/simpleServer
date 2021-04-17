@@ -397,14 +397,14 @@ func GetCommentListByWorkID(workID string) (commentList *CommendList, err error)
 	}
 	for loop := true; loop; loop = false {
 		collection := database.C(CollectCodeComment)
-		err = collection.Find(bson.M{"workId": workID}).One(&commentList)
+		err = collection.Find(bson.M{"workid": workID}).One(&commentList)
 		if err == mgo.ErrNotFound {
-			logs.Info("no commentList: workID=%d", workID)
+			logs.Info("no commentList: workID=%s", workID)
 			commentList = &CommendList{
 				WorkID:   workID,
-				Comments: make([]Comment, 0),
+				Comments: make([]*Comment, 0),
 			}
-			return nil, err
+			return commentList, nil
 		}
 		if err != nil {
 			logs.Error("find commentList failed: error=%v workID=%d", err, workID)

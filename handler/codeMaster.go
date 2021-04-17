@@ -28,6 +28,10 @@ func CodeMasterAPIHandler(w http.ResponseWriter, r *http.Request) {
 		getAllWorksHandler(w, r)
 	case "cmapi/codeDetail/getDetailByID":
 		getCodeDetail(w, r)
+	case "cmapi/codeDetail/getCommentList":
+		getRecommend(w, r)
+	case "cmapi/codeDetail/submitComment":
+		submitRecommend(w, r)
 	default:
 		logs.Warn("unexpect uri: uri=%s", uri)
 	}
@@ -271,22 +275,23 @@ func getCodeDetail(w http.ResponseWriter, r *http.Request) {
 // 提交评论
 func submitRecommend(w http.ResponseWriter, r *http.Request) {
 	var params struct {
-		WorkID string `json:"workId"`
-		Author string `json:"author"`
-		Conent string `json:"conent"`
-		ImgSrc string `json:"imgSrc"`
+		WorkID  string `json:"workId"`
+		Author  string `json:"author"`
+		Comment string `json:"comment"`
+		ImgSrc  string `json:"imgSrc"`
 	}
 	var resp respStruct
 	var err error
 	for loop := true; loop; loop = false {
-		err = toolbox.MustQueryFromRequest(r, &params)
+		decoder := json.NewDecoder(r.Body)
+		err = decoder.Decode(&params)
 		if err != nil {
 			logs.Error("parse params failed: error=%v", err)
 			break
 		}
 
 		// 检查参数
-		if params.WorkID == "" || params.Author == "" || params.Conent == "" {
+		if params.WorkID == "" || params.Author == "" || params.Comment == "" {
 			logs.Warning("unexpect params: params=%+v", params)
 			err = fmt.Errorf("unexpect params: %+v", params)
 			break
@@ -298,6 +303,12 @@ func submitRecommend(w http.ResponseWriter, r *http.Request) {
 			logs.Error("get old comment list failed: error=%v params=%v", err, params)
 			break
 		}
+		if commentData == nil {
+			commentData = &model.CommendList{
+				WorkID:   params.WorkID,
+				Comments: make([]*model.Comment, 0),
+			}
+		}
 		if len(commentData.Comments) >= 100 { // 最多保存100条评论
 			logs.Warn("commentList too long, give up insert: params=%+v", params)
 			err = errors.New("the commentList of it works is too long")
@@ -306,10 +317,9 @@ func submitRecommend(w http.ResponseWriter, r *http.Request) {
 		commentData.Comments = append(commentData.Comments, &model.Comment{
 			Timestamp: time.Now().Unix(),
 			ImgSrc:    params.ImgSrc,
-			Desc:      params.Conent,
+			Desc:      params.Comment,
 			Author:    params.Author,
 		})
-
 		// 更新数据库
 		err = model.UpdateCommentList(commentData)
 		if err != nil {
@@ -351,7 +361,7 @@ func getRecommend(w http.ResponseWriter, r *http.Request) {
 			logs.Warn("get commemtList failed: error=%v params=%+v", err, params)
 			break
 		}
-		resp.PayLoad = commemtList
+		resp.PayLoad = commemtList.Comments
 		logs.Info("get commemtList success: params=%+v", params)
 	}
 	if err != nil {

@@ -222,6 +222,7 @@ func MustQueryFromRequest(req *http.Request, ptrToTarget interface{}) (err error
 		return fmt.Errorf("params request is null")
 	}
 	req.ParseForm()
+
 	if len(req.Form) == 0 {
 		return fmt.Errorf("request Form is empty")
 	}
