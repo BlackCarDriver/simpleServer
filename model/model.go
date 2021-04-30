@@ -62,22 +62,23 @@ type CallDriverChat = struct {
 
 // codeMaster 程序作品
 type CodeMasterWork struct {
-	ID         string `json:"id" bson:"_id"`
-	Title      string `json:"title"`
-	CType      int    `json:"ctype"`    // 作品类型 [0-其他,1-生活问题,2-数据结构,3-程序开发,4-趣味恶搞]
-	Language   string `json:"language"` // 编程语言 [C++\C\GO]
-	Author     string `json:"author"`
-	TagStr     string `json:"tagStr"`
-	Desc       string `json:"desc"`      // 简介
-	InputDesc  string `json:"inputDesc"` // 输入数据格式描述
-	Detail     string `json:"detail"`
-	Code       string `json:"code"`
-	DemoInput  string `json:"demoInput"`
-	DemoOutput string `json:"demoOuput"`
-	CoverURL   string `json:"coverUrl"` // 封面图片
-	Timestamp  int64  `json:"timestamp"`
-	Score      int    `json:"score"` // 评分，满分为50分
-	Status     int    `json:"status"`
+	ID          string `json:"id" bson:"_id"`
+	Title       string `json:"title"`
+	CType       int    `json:"ctype"`    // 作品类型 [0-其他,1-生活问题,2-数据结构,3-程序开发,4-趣味恶搞]
+	Language    string `json:"language"` // 编程语言 [C++\C\GO]
+	Author      string `json:"author"`
+	TagStr      string `json:"tagStr"`
+	Desc        string `json:"desc"`      // 简介
+	InputDesc   string `json:"inputDesc"` // 输入数据格式描述
+	Detail      string `json:"detail"`
+	Code        string `json:"code"`
+	DemoInput   string `json:"demoInput"`
+	DemoOutput  string `json:"demoOuput"`
+	CoverURL    string `json:"coverUrl"` // 封面图片
+	Timestamp   int64  `json:"timestamp"`
+	Score       int    `json:"score"` // 评分，满分为50分
+	Status      int    `json:"status"`
+	IsRecommend bool   `json:"isRecommend"` // 是否推荐
 }
 
 // codeMaster 单条评论

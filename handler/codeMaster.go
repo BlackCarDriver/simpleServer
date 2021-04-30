@@ -171,6 +171,7 @@ func codeSubmitHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 设置默认值
+		work.IsRecommend = true
 		work.Timestamp = time.Now().Unix()
 		work.Score = 30
 		work.ID = fmt.Sprintf("%d_%s", time.Now().Unix(), toolbox.GetRandomString(2))
@@ -195,15 +196,16 @@ func codeSubmitHandler(w http.ResponseWriter, r *http.Request) {
 func getAllWorksHandler(w http.ResponseWriter, r *http.Request) {
 	var resp respStruct
 	type payloadStruct struct {
-		ID        string `json:"id"`
-		Title     string `json:"title"`
-		CType     int    `json:"ctype"`
-		Author    string `json:"author"`
-		TagStr    string `json:"tagStr"`
-		Desc      string `json:"desc"`
-		CoverURL  string `json:"coverUrl"`
-		Timestamp int64  `json:"timestamp"`
-		Score     int    `json:"score"`
+		ID          string `json:"id"`
+		Title       string `json:"title"`
+		CType       int    `json:"ctype"`
+		Author      string `json:"author"`
+		TagStr      string `json:"tagStr"`
+		Desc        string `json:"desc"`
+		CoverURL    string `json:"coverUrl"`
+		Timestamp   int64  `json:"timestamp"`
+		Score       int    `json:"score"`
+		IsRecommend bool   `json:"isRecommend"`
 	}
 	payload := make([]payloadStruct, 0)
 	var allWorks []*model.CodeMasterWork
@@ -215,15 +217,16 @@ func getAllWorksHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		for _, v := range allWorks {
 			payload = append(payload, payloadStruct{
-				ID:        v.ID,
-				Title:     v.Title,
-				CType:     v.CType,
-				Author:    v.Author,
-				TagStr:    v.TagStr,
-				Desc:      v.Desc,
-				CoverURL:  v.CoverURL,
-				Timestamp: v.Timestamp,
-				Score:     v.Score,
+				ID:          v.ID,
+				Title:       v.Title,
+				CType:       v.CType,
+				Author:      v.Author,
+				TagStr:      v.TagStr,
+				Desc:        v.Desc,
+				CoverURL:    v.CoverURL,
+				Timestamp:   v.Timestamp,
+				Score:       v.Score,
+				IsRecommend: v.IsRecommend,
 			})
 		}
 		logs.Info("query all works success, len=%d", len(payload))

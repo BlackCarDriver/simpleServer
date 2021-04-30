@@ -427,7 +427,7 @@ func UpdateCommentList(commentList *CommendList) (err error) {
 	}
 	for loop := true; loop; loop = false {
 		collection := database.C(CollectCodeComment)
-		_, err = collection.Upsert(bson.M{"workId": commentList.WorkID}, *commentList)
+		_, err = collection.Upsert(bson.M{"workid": commentList.WorkID}, *commentList)
 		if err != nil {
 			logs.Error("upsert commentList failed: error=%v commentList=%+v", err, commentList)
 		}
