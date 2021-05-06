@@ -435,3 +435,74 @@ func UpdateCommentList(commentList *CommendList) (err error) {
 	}
 	return nil
 }
+
+// 更新作品部分信息
+func UpdateWorksInfo(id string, socre int, IsRecommend int, title string, coverUrl string, tagStr string) (err error) {
+	if err = mongoBlocker(); err != nil {
+		logs.Error("%v", err)
+		return err
+	}
+	updater := bson.M{}
+	for loop := true; loop; loop = false {
+		collection := database.C(CollectCodeMasterWorks)
+		if collection == nil {
+			err = fmt.Errorf("connect to collection fail: collection=%s", CollectCodeMasterWorks)
+			break
+		}
+		if socre > 0 {
+			updater["score"] = socre
+		}
+		if title != "" {
+			updater["title"] = title
+		}
+		if coverUrl != "" {
+			updater["coverurl"] = coverUrl
+		}
+		if tagStr != "" {
+			updater["tagstr"] = tagStr
+		}
+		if IsRecommend > 0 {
+			updater["isrecommend"] = true
+		}
+		if IsRecommend < 0 {
+			updater["isrecommend"] = false
+		}
+		err = collection.UpdateId(id, bson.M{"$set": updater})
+		if err != nil {
+			break
+		}
+		logs.Info("update work success: id=%s updater=%+v", id, updater)
+	}
+	if err != nil {
+		logs.Error("save work failed: error=%v id=%s updater=%+v", err, id, updater)
+	}
+	return err
+}
+
+// 删除作品 (更新状态为-1)
+func UpdateWorksStatus(id string, newStatus int) (err error) {
+	if err = mongoBlocker(); err != nil {
+		logs.Error("%v", err)
+		return err
+	}
+	for loop := true; loop; loop = false {
+		if id == "" {
+			err = errors.New("unexpect null id")
+			break
+		}
+		collection := database.C(CollectCodeMasterWorks)
+		if collection == nil {
+			err = fmt.Errorf("connect to collection fail: collection=%s", CollectCodeMasterWorks)
+			break
+		}
+		err = collection.UpdateId(id, bson.M{"$set": bson.M{"status": newStatus}})
+		if err != nil {
+			break
+		}
+		logs.Info("update work status success: id=%d newStatus=%d", id, newStatus)
+	}
+	if err != nil {
+		logs.Error("save work status failed: error=%v id=%d newStatus=%d", err, id, newStatus)
+	}
+	return err
+}

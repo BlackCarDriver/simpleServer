@@ -20,14 +20,14 @@ var IpMonitor *tb.IPMonitor
 
 // 一些影响系统行为的配置变量
 var (
-	sendCallDriverEmail = true // 是否接收callDriver应用的邮件
-	sendAlertEmail = false // 是否发送告警通知 (暂时未用)
+	sendCallDriverEmail = true  // 是否接收callDriver应用的邮件
+	sendAlertEmail      = false // 是否发送告警通知 (暂时未用)
 )
+
 // 一些信息
 var (
 	serverStartTime int64 // 程序启动时间
 )
-
 
 func init() {
 	serverStartTime = time.Now().Unix()
@@ -186,5 +186,6 @@ func responseJson(w *http.ResponseWriter, payload interface{}) {
 		fmt.Fprint(*w, "sorry, something bad happen...")
 		return
 	}
+	(*w).Header().Add("content-type", "application/json")
 	fmt.Fprintf(*w, "%s", bytes)
 }

@@ -33,6 +33,7 @@ func init() {
 	s2sMaster = NewServiceMaster()
 	protocolFactory = thrift.NewTBinaryProtocolFactoryDefault()
 	transportFactory = thrift.NewTBufferedTransportFactory(8192)
+
 	logs.Info("rpc init...")
 }
 

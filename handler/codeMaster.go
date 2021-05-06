@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"../config"
 	"../model"
 	"../rpc"
 	"../toolbox"
@@ -32,6 +33,8 @@ func CodeMasterAPIHandler(w http.ResponseWriter, r *http.Request) {
 		getRecommend(w, r)
 	case "cmapi/codeDetail/submitComment":
 		submitRecommend(w, r)
+	case "cmapi/codeDetail/updateWork":
+		updateWork(w, r)
 	default:
 		logs.Warn("unexpect uri: uri=%s", uri)
 	}
@@ -366,6 +369,76 @@ func getRecommend(w http.ResponseWriter, r *http.Request) {
 		}
 		resp.PayLoad = commemtList.Comments
 		logs.Info("get commemtList success: params=%+v", params)
+	}
+	if err != nil {
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}
+	responseJson(&w, resp)
+}
+
+// 更新作品信息或删除算法作品
+func updateWork(w http.ResponseWriter, r *http.Request) {
+	var params struct {
+		Key         string `json:"key"`    // 认真密钥
+		OpType      string `json:"opType"` // [UPDATE|DELETE]
+		WorkID      string `json:"workId"`
+		Title       string `json:"title"`       // 为空不更新
+		IsRecommend int    `json:"isRecommend"` // 0时不更新，大于0推荐，小于0不推荐
+		Score       int    `json:"score"`       // 评分，满分为50分,0分时不更新
+		CoverURL    string `json:"coverUrl"`    // 封面图片，为空时不更新
+		TagStr      string `json:"tagStr"`      // 标签，为空时不更新
+	}
+	var resp respStruct
+	var err error
+	for loop := true; loop; loop = false {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		err = toolbox.MustQueryFromRequest(r, &params)
+		if err != nil {
+			logs.Error("parse params failed: error=%v", err)
+			break
+		}
+
+		// 检查参数
+		if params.WorkID == "" {
+			logs.Warning("unexpect params: params=%+v", params)
+			err = fmt.Errorf("unexpect params: workID=%v", params.WorkID)
+			break
+		}
+		if params.OpType != "UPDATE" && params.OpType != "DELETE" {
+			logs.Warning("unexpect params: params=%+v", params)
+			err = fmt.Errorf("unexpect params: optype=%s", params.OpType)
+			break
+		}
+		if params.Key != config.ServerConfig.AuthorityKey {
+			logs.Warning("unexpect key: %s", params.Key)
+			err = errors.New("not Authority")
+			break
+		}
+
+		// 数据操作
+		if params.OpType == "DELETE" {
+			err = model.UpdateWorksStatus(params.WorkID, -1)
+			if err != nil {
+				logs.Error("delete work failed: params=%+v error=%v", params, err)
+				break
+			}
+			logs.Info("delete work success: params=%+v", params)
+			break
+		}
+		if params.OpType == "UPDATE" {
+			err = model.UpdateWorksInfo(params.WorkID, params.Score, params.IsRecommend, params.Title, params.CoverURL, params.TagStr)
+			if err != nil {
+				logs.Error("update work failed: params=%+v error=%v", params, err)
+				break
+			}
+			logs.Info("update work success: params=%+v", params)
+			break
+		}
 	}
 	if err != nil {
 		resp.Status = -1
