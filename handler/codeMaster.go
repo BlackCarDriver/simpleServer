@@ -35,6 +35,8 @@ func CodeMasterAPIHandler(w http.ResponseWriter, r *http.Request) {
 		submitRecommend(w, r)
 	case "cmapi/codeDetail/updateWork":
 		updateWork(w, r)
+	case "cmapi/codeDetail/runWork":
+		runWork(w, r)
 	default:
 		logs.Warn("unexpect uri: uri=%s", uri)
 	}
@@ -439,6 +441,84 @@ func updateWork(w http.ResponseWriter, r *http.Request) {
 			logs.Info("update work success: params=%+v", params)
 			break
 		}
+	}
+	if err != nil {
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}
+	responseJson(&w, resp)
+}
+
+// 执行算法作品请求
+func runWork(w http.ResponseWriter, r *http.Request) {
+	var params struct {
+		WorkID string `json:"workId"`
+		Input  string `json:"input"`
+	}
+	var payload struct {
+		StdErr string `json:"stdErr"`
+		StdOut string `json:"stdOut"`
+	}
+	var resp respStruct
+	var err error
+	for loop := true; loop; loop = false {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+		decoder := json.NewDecoder(r.Body)
+		err = decoder.Decode(&params)
+		if err != nil {
+			logs.Error("parse params failed: error=%v", err)
+			break
+		}
+
+		// 检查参数
+		if params.WorkID == "" {
+			logs.Warning("unexpect params: params=%+v", params)
+			err = fmt.Errorf("unexpect params: workID=%v", params.WorkID)
+			break
+		}
+		// 根据id获取算法详情
+		var work *model.CodeMasterWork
+		work, err = model.GetCodeDetailByID(params.WorkID)
+		if err != nil {
+			logs.Error("get work detail failed: err=%v id=%s", err, params.WorkID)
+			break
+		}
+		logs.Info("lang=%s code=%s", work.Language, work.Code)
+
+		// 执行算法
+		var rpcResp *baseService.CommomResp
+		if work.Language == "CPP" {
+			rpcResp, err = rpc.BuildCpp(work.Code, params.Input)
+		} else if work.Language == "C" {
+			rpcResp, err = rpc.BuildC(work.Code, params.Input)
+		} else if work.Language == "GO" {
+			rpcResp, err = rpc.BuildGo(work.Code, params.Input)
+		} else {
+			err = fmt.Errorf("unexpect params: lang=%q", work.Language)
+			break
+		}
+		if err != nil {
+			logs.Error("run work failed: err=%v params=%+v", err, params)
+			break
+		}
+		if rpcResp.Status != 0 {
+			err = fmt.Errorf("run failed: msg=%v", rpcResp.Msg)
+			break
+		}
+		if rpcResp.Payload == nil {
+			err = errors.New("payload is nil")
+			break
+		}
+		err = json.Unmarshal(rpcResp.Payload, &payload)
+		if err != nil {
+			logs.Error("unmarshal failed: err=%v", err)
+			break
+		}
+		resp.PayLoad = payload
+		logs.Info("run work success, resp=%+v", rpcResp)
 	}
 	if err != nil {
 		resp.Status = -1
