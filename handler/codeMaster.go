@@ -176,7 +176,7 @@ func codeSubmitHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		// 设置默认值
-		work.IsRecommend = true
+		work.IsRecommend = false
 		work.Timestamp = time.Now().Unix()
 		work.Score = 30
 		work.ID = fmt.Sprintf("%d_%s", time.Now().Unix(), toolbox.GetRandomString(2))
@@ -187,6 +187,7 @@ func codeSubmitHandler(w http.ResponseWriter, r *http.Request) {
 			logs.Error("save work failed: error=%v work=%+v", err, work)
 			break
 		}
+		resp.PayLoad = work.ID
 		logs.Info("save work success")
 	}
 	if err != nil {
